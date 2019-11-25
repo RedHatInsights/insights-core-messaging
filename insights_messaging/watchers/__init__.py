@@ -4,6 +4,10 @@ log = logging.getLogger(__name__)
 
 
 class Watched(object):
+    """
+    Generic base class for subclasses that support notifying a list of event
+    watchers.
+    """
     def __init__(self):
         self.watchers = []
 
@@ -27,33 +31,58 @@ class Watcher(object):
 
 class EngineWatcher(Watcher):
     def watch_broker(self, broker):
-        pass
+        """
+        Used to give the watcher an opportunity to register Broker observers
+        before analysis.
+        """
 
-    def pre_extract(self, broker, path):
-        pass
+    def pre_extract(self, broker, archive):
+        """
+        Fired before the archive is extracted.
+        """
 
     def on_extract(self, ctx, broker, extraction):
-        pass
+        """
+        Fired just after the archive is extracted but before any analysis.
+        """
 
-    def on_engine_failure(self, broker):
-        pass
+    def on_engine_failure(self, broker, ex):
+        """
+        Fired if any exceptions occur during archive identification, extraction,
+        or result formatting. Exceptions raised by insights components are
+        not intercepted by this function. Use :py:method:`watch_broker` to
+        register callbacks on the insights Broker to look for those kinds of
+        errors.
+        """
 
     def on_engine_complete(self, broker):
-        pass
+        """
+        Fired when an analysis is complete regardless of outcome.
+        """
 
 
 class ConsumerWatcher(Watcher):
     def on_recv(self, input_msg):
-        pass
+        """
+        Fired after the consumer recieves a message to process.
+        """
 
     def on_download(self, path):
-        pass
+        """
+        Fired after the consumer downloads an archive to path.
+        """
 
     def on_consumer_success(self, input_msg, broker, response):
-        pass
+        """
+        Fired after an archive was successfully processed.
+        """
 
     def on_consumer_failure(self, input_msg, exception):
-        pass
+        """
+        Fired after an archive fails processing.
+        """
 
     def on_consumer_complete(self, input_msg):
-        pass
+        """
+        Fired after an archive processes regardless of outcome.
+        """

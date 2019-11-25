@@ -1,5 +1,5 @@
 Construct an insights archive processing application by providing a
-configuration file that specifies its components. The component types
+configuration file that specifies its components. The building blocks
 are described below.
 
 Consumer
