@@ -8,12 +8,12 @@ from s3fs import S3FileSystem
 
 
 class S3Downloader(object):
-    def __init__(self, tmp_dir=None):
-        key = os.environ.get("AWS_ACCESS_KEY_ID")
-        secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    def __init__(self, tmp_dir=None, **kwargs):
+        key = kwargs.pop("key", os.environ.get("AWS_ACCESS_KEY_ID"))
+        secret = kwargs.pop("secret", os.environ.get("AWS_SECRET_ACCESS_KEY"))
 
         self.tmp_dir = tmp_dir
-        self.fs = S3FileSystem(key=key, secret=secret)
+        self.fs = S3FileSystem(key=key, secret=secret, **kwargs)
 
     @contextmanager
     def get(self, src):

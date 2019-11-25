@@ -23,6 +23,6 @@ class HTTPFS(object):
     @contextmanager
     def get(self, src):
         r = self.session.get(src, stream=True)
-        with NamedTemporaryFile(dir=self.tmp_dir) as f:
-            self._copy(r, f)
-            yield f.name
+        with NamedTemporaryFile(dir=self.tmp_dir) as d:
+            self._copy(r, d)
+            yield d.name
