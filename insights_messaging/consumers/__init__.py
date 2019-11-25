@@ -14,7 +14,7 @@ class Consumer(Watched):
         self.engine = engine
 
     def run(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def process(self, input_msg):
         try:
@@ -39,7 +39,7 @@ class Consumer(Watched):
             self.fire("on_consumer_complete", input_msg)
 
     def get_url(self, input_msg):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def create_broker(self, input_msg):
         return dr.Broker()

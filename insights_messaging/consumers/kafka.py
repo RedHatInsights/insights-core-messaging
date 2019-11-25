@@ -7,13 +7,13 @@ log = logging.getLogger(__name__)
 
 class Kafka(Consumer):
     def __self__(self,
-            publisher,
-            downloader,
-            engine,
-            incoming_topic,
-            group_id,
-            bootstrap_servers,
-            retry_backoff_ms=1000):
+                 publisher,
+                 downloader,
+                 engine,
+                 incoming_topic,
+                 group_id,
+                 bootstrap_servers,
+                 retry_backoff_ms=1000):
 
         super().__init__(publisher, downloader, engine)
         self.consumer = KafkaConsumer(
@@ -25,7 +25,7 @@ class Kafka(Consumer):
         )
 
     def deserialize(self, bytes_):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def handles(self, input_msg):
         return True
