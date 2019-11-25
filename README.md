@@ -96,8 +96,8 @@ Watchers
 --------
 Watchers monitor events from the consumer or engine. A consumer watcher might track
 the total number of archives, the number that succeeded, and the number that failed.
-An engine watcher might track component execution times. Look at [watcher.py](https://github.com/csams/insights-core-messaging/blob/master/insights_messaging/watcher.py)
-for the possible callbacks.
+An engine watcher might track component execution times. Look at the [watchers](https://github.com/csams/insights-core-messaging/blob/master/insights_messaging/watchers/__init__.py)
+package for the possible callbacks.
 ```python
 from pprint import pprint
 
