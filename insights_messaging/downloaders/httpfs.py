@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
 
 
-class HTTPFS(object):
+class Http(object):
     def __init__(self, tmp_dir=None, chunk_size=16 * 1024):
         session = requests.Session()
 
@@ -24,6 +24,7 @@ class HTTPFS(object):
     @contextmanager
     def get(self, src):
         r = self.session.get(src, stream=True)
+        r.raise_for_status()
         with NamedTemporaryFile(dir=self.tmp_dir) as d:
             self._copy(r, d)
             yield d.name

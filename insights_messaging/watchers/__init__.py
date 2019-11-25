@@ -72,7 +72,7 @@ class ConsumerWatcher(Watcher):
         Fired after the consumer downloads an archive to path.
         """
 
-    def on_consumer_success(self, input_msg, broker, response):
+    def on_consumer_success(self, input_msg, broker, results):
         """
         Fired after an archive was successfully processed.
         """

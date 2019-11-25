@@ -10,16 +10,16 @@ class Kafka(Consumer):
             publisher,
             downloader,
             engine,
-            incoming_topic="",
-            bootstrap_servers="",
-            group_id="",
+            incoming_topic,
+            group_id,
+            bootstrap_servers,
             retry_backoff_ms=1000):
 
         super().__init__(publisher, downloader, engine)
         self.consumer = KafkaConsumer(
             incoming_topic,
-            bootstrap_servers=bootstrap_servers,
             group_id=group_id,
+            bootstrap_servers=bootstrap_servers,
             value_deserializer=self.deserialize,
             retry_backoff_ms=retry_backoff_ms,
         )
