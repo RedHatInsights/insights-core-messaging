@@ -137,7 +137,11 @@ will use `/tmp` if no path is provided.
 `extract_timeout` is the number of sections the engine will attempt to
 extract an archive. It raises an exception if the timeout is exceeded or will
 try forever if no timeout is specified.
+
 ```yaml
+# insights.parsers.redhat_release must be loaded and enabled for 
+# insights_messaging.formats.rhel_stats.Stats to collect product and version
+# info. This is also true for insights.formats._json.JsonFormat.
 plugins:
     default_component_enabled: true
     packages:
