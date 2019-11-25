@@ -4,7 +4,7 @@ from insights.core import dr
 from insights.core.archives import extract
 from insights.core.hydration import create_context
 from insights.formats import Formatter
-from insights_messaging.watcher import Watched
+from insights_messaging.watchers import Watched
 
 log = logging.getLogger(__name__)
 

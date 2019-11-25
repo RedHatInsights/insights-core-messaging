@@ -1,6 +1,6 @@
 from pprint import pprint
 from insights import dr
-from insights_messaging.watcher import EngineWatcher
+from . import EngineWatcher
 
 
 class LocalStatWatcher(EngineWatcher):

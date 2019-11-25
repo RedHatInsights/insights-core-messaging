@@ -6,7 +6,7 @@ from .downloaders.localfs import LocalFS
 from .engine import Engine
 from .consumers.cli import Interactive
 from .publishers.cli import StdOut
-from .watcher import EngineWatcher, ConsumerWatcher
+from .watchers import EngineWatcher, ConsumerWatcher
 
 
 class AppBuilder(object):

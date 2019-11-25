@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-from insights_messaging.builder import AppBuilder
+from insights_messaging.appbuilder import AppBuilder
 
 
 def parse_args():
