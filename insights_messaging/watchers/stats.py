@@ -1,31 +1,13 @@
-from collections import defaultdict
+from pprint import pprint
 from insights import dr
+from insights_messaging.watcher import EngineWatcher
 
 
-class StatWatcher(object):
+class LocalStatWatcher(EngineWatcher):
     def __init__(self):
-        self.scoreboard = defaultdict(int)
+        self.archives = 0
 
-    def keep_score(self, comp, broker):
-        print(f"Saw {dr.get_name(comp)}")
-
-    def watch_broker(self, broker):
-        broker.add_observer(self.keep_score)
-
-    def watch_engine(self, engine):
-        engine.add_watcher(self)
-
-    def watch_service(self, service):
-        service.add_watcher(self)
-
-    def on_recv(self, msg):
-        self.scoreboard = defaultdict(int)
-
-    def on_download(self, path):
-        pass
-
-    def on_process_complete(self, broker):
-        print(dict(self.scoreboard))
-
-    def on_run_complete(self):
-        pass
+    def on_engine_complete(self, broker):
+        self.archives += 1
+        times = {dr.get_name(k): v for k, v in broker.exec_times.items() if k in broker}
+        pprint({"times": times, "archives": self.archives})

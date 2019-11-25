@@ -2,10 +2,12 @@
 import yaml
 
 from insights import dr, apply_default_enabled, apply_configs
-from insights.formats._json import JsonFormat
+from insights.formats.text import HumanReadableFormat
 from insights_messaging.downloaders.localfs import LocalFS
 from insights_messaging.engine import Engine
-from insights_messaging.services.cli import Interactive
+from insights_messaging.consumers.cli import Interactive
+from insights_messaging.publishers.cli import StdOut
+from insights_messaging.watcher import EngineWatcher, ConsumerWatcher
 
 
 class AppBuilder(object):
@@ -20,14 +22,16 @@ class AppBuilder(object):
         - name: examples.rules.bash_version.report
           enabled: true
     service:
-        format: insights.formats.text.HumanReadableFormat
+        consumer:
+            name: insights_messaging.consumers.cli.Interactive
+        publisher:
+            name: insights_messaging.publishers.cli.StdOut
         downloader:
             name: insights_messaging.downloaders.localfs.LocalFS
-        service:
-            name: insights_messaging.services.cli.Interactive
-        watchers: []
+        format: insights_messaging.formats.rhel_stats.Stats
         target_components:
             - examples.rules.bash_version.report
+        watchers: []
     """
 
     def __init__(self, manifest=None):
@@ -35,6 +39,8 @@ class AppBuilder(object):
             manifest = self.default_manifest
         if not isinstance(manifest, dict):
             manifest = yaml.load(manifest, Loader=yaml.CSafeLoader)
+
+        self.manifest = manifest
         self.plugins = manifest.get("plugins", {})
         self.service = manifest.get("service", {})
         self.configs = manifest.get("configs", {})
@@ -48,20 +54,39 @@ class AppBuilder(object):
 
     def _get_format(self):
         if "format" not in self.service:
-            return JsonFormat
-        return dr.get_component(self.service["format"])
+            return HumanReadableFormat
+        name = self.service["format"]
+        fmt = dr.get_component(name)
+        if fmt is None:
+            raise Exception(f"Couldn't find {name}.")
+        return fmt
 
-    def _get_service(self, downloader, engine):
-        if "service" not in self.service:
-            return Interactive(downloader, engine)
-        spec = self.service["service"]
-        Service = dr.get_component(spec["name"])
+    def _get_consumer(self, publisher, downloader, engine):
+        if "consumer" not in self.service:
+            return Interactive(publisher, downloader, engine)
+        spec = self.service["consumer"]
+        Consumer = dr.get_component(spec["name"])
+        if Consumer is None:
+            raise Exception(f"Couldn't find {spec['name']}.")
         args = spec.get("args", [])
         kwargs = spec.get("kwargs", {})
-        return Service(downloader, engine, *args, **kwargs)
+        return Consumer(publisher, downloader, engine, *args, **kwargs)
+
+    def _get_publisher(self):
+        if "publisher" not in self.service:
+            return StdOut()
+        spec = self.service["publisher"]
+        Publisher = dr.get_component(spec["name"])
+        if Publisher is None:
+            raise Exception(f"Couldn't find {spec['name']}.")
+        args = spec.get("args", [])
+        kwargs = spec.get("kwargs", {})
+        return Publisher(*args, **kwargs)
 
     def _load(self, spec):
         comp = dr.get_component(spec["name"])
+        if comp is None:
+            raise Exception(f"Couldn't find {spec['name']}.")
         args = spec.get("args", [])
         kwargs = spec.get("kwargs", {})
         return comp(*args, **kwargs)
@@ -91,18 +116,19 @@ class AppBuilder(object):
         apply_default_enabled(self.plugins)
         apply_configs(self.plugins)
 
-        downloader = self._get_downloader()
         target_components = self._get_target_components()
+        publisher = self._get_publisher()
+        downloader = self._get_downloader()
         engine = Engine(target_components, self._get_format())
-        service = self._get_service(downloader, engine)
+        consumer = self._get_consumer(publisher, downloader, engine)
 
         for w in self._get_watchers():
-            if hasattr(w, "watch_engine"):
-                w.watch_engine(engine)
-            if hasattr(w, "watch_service"):
-                w.watch_service(service)
+            if isinstance(w, EngineWatcher):
+                w.watch(engine)
+            if isinstance(w, ConsumerWatcher):
+                w.watch(consumer)
 
-        return service
+        return consumer
 
 if __name__ == "__main__":
     AppBuilder().build_app().run()

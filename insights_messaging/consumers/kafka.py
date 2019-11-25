@@ -1,19 +1,22 @@
 import json
+import logging
 from kafka import KafkaConsumer
+from . import Consumer
+
+log = logging.getLogger(__name__)
 
 
-class Kafka(object):
+class Kafka(Consumer):
     def __self__(self,
+            publisher,
             downloader,
             engine,
             incoming_topic="",
-            outgoing_topic="",
             bootstrap_servers="",
             group_id="",
             retry_backoff_ms=1000):
 
-        self.downloader = downloader
-        self.engine = engine
+        super().__init__(publisher, downloader, engine)
         self.consumer = KafkaConsumer(
             incoming_topic,
             bootstrap_servers=bootstrap_servers,
@@ -22,6 +25,14 @@ class Kafka(object):
             retry_backoff_ms=retry_backoff_ms,
         )
 
-    @classmethod
-    def deserialize(cls, bytes_):
+    def deserialize(self, bytes_):
         return json.loads(bytes_.decode("utf-8"))
+
+    def handles(self, input_msg):
+        return True
+
+    def run(self):
+        for msg in self.consumer:
+            log.debug("recv", extra=msg.value)
+            if self.handles(msg.value):
+                self.process(msg.value)
