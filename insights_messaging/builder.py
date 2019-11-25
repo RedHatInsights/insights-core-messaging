@@ -10,33 +10,7 @@ from .watcher import EngineWatcher, ConsumerWatcher
 
 
 class AppBuilder(object):
-    default_manifest = """
-    plugins:
-        default_component_enabled: true
-        packages:
-            - insights.specs.default
-            - insights.specs.insights_archive
-            - examples.rules.bash_version
-    configs:
-        - name: examples.rules.bash_version.report
-          enabled: true
-    service:
-        consumer:
-            name: insights_messaging.consumers.cli.Interactive
-        publisher:
-            name: insights_messaging.publishers.cli.StdOut
-        downloader:
-            name: insights_messaging.downloaders.localfs.LocalFS
-        format: insights_messaging.formats.rhel_stats.Stats
-        target_components:
-            - examples.rules.bash_version.report
-        watchers:
-            - name: insights_messaging.watchers.stats.LocalStatWatcher
-    """
-
-    def __init__(self, manifest=None):
-        if manifest is None:
-            manifest = self.default_manifest
+    def __init__(self, manifest):
         if not isinstance(manifest, dict):
             manifest = yaml.load(manifest, Loader=yaml.CSafeLoader)
 
@@ -111,6 +85,13 @@ class AppBuilder(object):
                 graph.update(dr.get_dependency_graph(c))
         return graph or None
 
+    def _get_extract_timeout(self):
+        return self.service.get("extract_timeout")
+
+    def _get_extract_tmp_dir(self):
+        return self.service.get("extract_tmp_dir")
+
+
     def build_app(self):
         self._load_plugins()
         apply_default_enabled(self.plugins)
@@ -119,7 +100,9 @@ class AppBuilder(object):
         target_components = self._get_target_components()
         publisher = self._get_publisher()
         downloader = self._get_downloader()
-        engine = Engine(target_components, self._get_format())
+        timeout = self._get_extract_timeout()
+        tmp_dir = self._get_extract_tmp_dir()
+        engine = Engine(target_components, self._get_format(), timeout=timeout, tmp_dir=tmp_dir)
         consumer = self._get_consumer(publisher, downloader, engine)
 
         for w in self._get_watchers():

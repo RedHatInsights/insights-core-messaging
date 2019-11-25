@@ -10,10 +10,12 @@ log = logging.getLogger(__name__)
 
 
 class Engine(Watched):
-    def __init__(self, comps=None, Format=Formatter):
+    def __init__(self, comps=None, Format=Formatter, timeout=None, tmp_dir=None):
         super().__init__()
         self.comps = comps
         self.Format = Format
+        self.timeout = timeout
+        self.tmp_dir = tmp_dir
 
     def process(self, broker, path):
         for w in self.watchers:
@@ -24,7 +26,7 @@ class Engine(Watched):
         try:
             self.fire("pre_extract", broker, path)
 
-            with extract(path) as extraction:
+            with extract(path, timeout=self.timeout, extract_dir=self.tmp_dir) as extraction:
                 ctx = create_context(extraction.tmp_dir)
                 broker[ctx.__class__] = ctx
 

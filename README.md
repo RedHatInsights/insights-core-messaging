@@ -96,7 +96,8 @@ Watchers
 --------
 Watchers monitor events from the consumer or engine. A consumer watcher might track
 the total number of archives, the number that succeeded, and the number that failed.
-An engine watcher might track component execution times.
+An engine watcher might track component execution times. Look at [watcher.py](https://github.com/csams/insights-core-messaging/blob/master/insights_messaging/watcher.py)
+for the possible callbacks.
 ```python
 from pprint import pprint
 
@@ -118,33 +119,48 @@ Example Configuration
 ---------------------
 The plugins and configs section of the configuration are standard insights
 configs. The service section contains the components that make up the
-application. The consumer, publisher, downloader, and watchers must contain a
-full component name, and they may contain a list called `args` and a dictionary
-called `kwargs`. If provided, the args and kwargs are used to construct the
-component. In the case of a consumer, they are provided after the standard args
-of publisher, downloader, and engine. The `target_components` list can be used
-to constrain which loaded components are executed. The dependency graph of
-components whose full names start with any element will be executed.
+application.
+
+The consumer, publisher, downloader, and watchers must contain a full component
+name, and they may contain a list called `args` and a dictionary called
+`kwargs`. If provided, the args and kwargs are used to construct the component.
+In the case of a consumer, they are provided after the standard args of
+publisher, downloader, and engine.
+
+The `target_components` list can be used to constrain which loaded components
+are executed. The dependency graph of components whose full names start with
+any element will be executed.
+
+`extract_tmp_dir` is where the engine will extract archives for analysis. It
+will use `/tmp` if no path is provided.
+
+`extract_timeout` is the number of sections the engine will attempt to
+extract an archive. It raises an exception if the timeout is exceeded or will
+try forever if no timeout is specified.
 ```yaml
 plugins:
     default_component_enabled: true
     packages:
         - insights.specs.default
         - insights.specs.insights_archive
+        - insights.parsers.redhat_release
         - examples.rules.bash_version
 configs:
     - name: examples.rules.bash_version.report
       enabled: true
 service:
+    extract_timeout:
+    extract_tmp_dir:
+    format: insights_messaging.formats.rhel_stats.Stats
+    target_components:
+        - examples.rules.bash_version.report
+        - insights.parsers.redhat_release
     consumer:
         name: insights_messaging.consumers.cli.Interactive
     publisher:
         name: insights_messaging.publishers.cli.StdOut
     downloader:
         name: insights_messaging.downloaders.localfs.LocalFS
-    format: insights_messaging.formats.rhel_stats.Stats
-    target_components:
-        - examples.rules.bash_version.report
     watchers:
         - name: insights_messaging.watchers.stats.LocalStatWatcher
 ```

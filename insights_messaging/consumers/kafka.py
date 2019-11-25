@@ -1,4 +1,3 @@
-import json
 import logging
 from kafka import KafkaConsumer
 from . import Consumer
@@ -26,7 +25,7 @@ class Kafka(Consumer):
         )
 
     def deserialize(self, bytes_):
-        return json.loads(bytes_.decode("utf-8"))
+        raise NotImplemented()
 
     def handles(self, input_msg):
         return True

@@ -5,7 +5,7 @@ from tempfile import NamedTemporaryFile
 
 
 class HTTPFS(object):
-    def __init__(self, tmp_dir=None):
+    def __init__(self, tmp_dir=None, chunk_size=16 * 1024):
         session = requests.Session()
 
         user = os.environ.get("httpfs_username")
@@ -14,9 +14,10 @@ class HTTPFS(object):
         if user is not None and password is not None:
             session.auth = (user, password)
         self.tmp_dir = tmp_dir
+        self.chunk_size = chunk_size
 
-    def _copy(self, r, d, chunk_size=16 * 1024):
-        for chunk in r.iter_content(chunk_size=chunk_size, decode_unicode=False):
+    def _copy(self, r, d):
+        for chunk in r.iter_content(chunk_size=self.chunk_size, decode_unicode=False):
             d.write(chunk)
         d.flush()
 

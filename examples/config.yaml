@@ -1,0 +1,25 @@
+plugins:
+    default_component_enabled: true
+    packages:
+        - insights.specs.default
+        - insights.specs.insights_archive
+        - insights.parsers.redhat_release
+        - examples.rules.bash_version
+configs:
+    - name: examples.rules.bash_version.report
+      enabled: true
+service:
+    extract_timeout:
+    extract_tmp_dir:
+    format: insights_messaging.formats.rhel_stats.Stats
+    target_components:
+        - examples.rules.bash_version.report
+        - insights.parsers.redhat_release
+    consumer:
+        name: insights_messaging.consumers.cli.Interactive
+    publisher:
+        name: insights_messaging.publishers.cli.StdOut
+    downloader:
+        name: insights_messaging.downloaders.localfs.LocalFS
+    watchers:
+        - name: insights_messaging.watchers.stats.LocalStatWatcher
