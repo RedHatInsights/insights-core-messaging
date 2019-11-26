@@ -1,5 +1,7 @@
 import yaml
 
+from logging.config import dictConfig
+
 from insights import dr, apply_default_enabled, apply_configs
 from insights.formats.text import HumanReadableFormat
 from .downloaders.localfs import LocalFS
@@ -96,8 +98,13 @@ class AppBuilder(object):
     def _get_extract_tmp_dir(self):
         return self.service.get("extract_tmp_dir")
 
+    def _get_log_config(self):
+        return self.service.get("logging", {})
 
     def build_app(self):
+        log_config = self._get_log_config()
+        dictConfig(log_config)
+
         self._load_plugins()
         apply_default_enabled(self.plugins)
         apply_configs(self.plugins)
