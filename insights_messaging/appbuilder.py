@@ -8,11 +8,16 @@ from .consumers.cli import Interactive
 from .publishers.cli import StdOut
 from .watchers import EngineWatcher, ConsumerWatcher
 
+try:
+    Loader = yaml.CSafeLoader
+except:
+    Loader = yaml.SafeLoader
+
 
 class AppBuilder(object):
     def __init__(self, manifest):
         if not isinstance(manifest, dict):
-            manifest = yaml.load(manifest, Loader=yaml.CSafeLoader)
+            manifest = yaml.load(manifest, Loader=Loader)
 
         self.manifest = manifest
         self.plugins = manifest.get("plugins", {})
