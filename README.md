@@ -133,8 +133,8 @@ any element will be executed.
 will use `/tmp` if no path is provided.
 
 `extract_timeout` is the number of seconds the engine will attempt to extract
-an archive. It raises an exception if the timeout is exceeded or will try
-forever if no timeout is specified.
+an archive. It raises an exception if the timeout is exceeded or tries forever
+if no timeout is specified.
 
 ```yaml
 # insights.parsers.redhat_release must be loaded and enabled for 
