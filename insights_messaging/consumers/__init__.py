@@ -32,9 +32,9 @@ class Consumer(Watched):
 
                 self.fire("on_consumer_success", input_msg, broker, results)
         except Exception as ex:
-            log.exception(ex)
             self.publisher.error(input_msg, ex)
             self.fire("on_consumer_failure", input_msg, ex)
+            raise
         finally:
             self.fire("on_consumer_complete", input_msg)
 
