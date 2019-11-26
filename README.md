@@ -5,9 +5,9 @@ are described below.
 Consumer
 --------
 A consumer retrieves a message at a time from a source, extracts a url from it,
-downloads an archive using the configured downloader, and passes the file to
-an internal engine for processing.  It retrieves from the results from the
-engine publishes them with the configured publisher.
+downloads an archive using the configured downloader, and passes the file to an
+internal engine for processing.  It retrieves results from the engine and
+publishes them with the configured publisher.
 ```python
 import logging
 from . import Consumer
@@ -132,9 +132,9 @@ any element will be executed.
 `extract_tmp_dir` is where the engine will extract archives for analysis. It
 will use `/tmp` if no path is provided.
 
-`extract_timeout` is the number of sections the engine will attempt to
-extract an archive. It raises an exception if the timeout is exceeded or will
-try forever if no timeout is specified.
+`extract_timeout` is the number of seconds the engine will attempt to extract
+an archive. It raises an exception if the timeout is exceeded or will try
+forever if no timeout is specified.
 
 ```yaml
 # insights.parsers.redhat_release must be loaded and enabled for 
