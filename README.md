@@ -19,7 +19,7 @@ class Interactive(Consumer):
     def run(self):
         while True:
             input_msg = input("Input Archive Name: ")
-            if not msg:
+            if not input_msg:
                 break
             self.process(input_msg)
 
