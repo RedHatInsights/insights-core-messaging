@@ -32,9 +32,8 @@ class Kafka(Consumer):
 
     def run(self):
         for msg in self.consumer:
-            log.debug("recv", extra=msg.value)
             try:
-                if self.handles(msg.value):
-                    self.process(msg.value)
+                if self.handles(msg):
+                    self.process(msg)
             except Exception as ex:
                 log.exception(ex)
