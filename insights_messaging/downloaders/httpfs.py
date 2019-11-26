@@ -6,7 +6,7 @@ from tempfile import NamedTemporaryFile
 
 class Http(object):
     def __init__(self, tmp_dir=None, chunk_size=16 * 1024):
-        session = requests.Session()
+        self.session = requests.Session()
 
         user = os.environ.get("httpfs_username")
         password = os.environ.get("httpfs_password")
