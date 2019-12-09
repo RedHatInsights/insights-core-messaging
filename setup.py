@@ -31,7 +31,7 @@ if __name__ == "__main__":
         description="Messaging service around insights-core.",
         long_description=open("README.md").read(),
         long_description_content_type='text/markdown',
-        url="https://github.com/csams/insights-core-messaging",
+        url="https://github.com/RedHatInsights/insights-core-messaging",
         packages=find_packages(),
         package_data={'': ['LICENSE']},
         license='Apache 2.0',
