@@ -26,3 +26,9 @@ service:
         name: insights_messaging.downloaders.localfs.LocalFS
     watchers:
         - name: insights_messaging.watchers.stats.LocalStatWatcher
+    logging:
+        version: 1
+        disable_existing_loggers: false
+        loggers:
+            "":
+                level: WARN
