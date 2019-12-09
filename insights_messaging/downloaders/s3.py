@@ -6,7 +6,7 @@ from tempfile import NamedTemporaryFile
 from s3fs import S3FileSystem
 
 
-class S3Downloader(object):
+class S3Downloader:
     def __init__(self, tmp_dir=None, chunk_size=16 * 1024, **kwargs):
         self.tmp_dir = tmp_dir
         self.chunk_size = chunk_size

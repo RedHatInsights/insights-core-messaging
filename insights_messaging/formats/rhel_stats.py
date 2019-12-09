@@ -8,7 +8,7 @@ from insights.formats import Formatter
 
 
 @attr.s
-class StatResponse(object):
+class StatResponse:
     name = attr.ib(default=None)
     component = attr.ib(default=None)
     fired = attr.ib(default=False)

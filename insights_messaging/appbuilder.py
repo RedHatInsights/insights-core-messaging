@@ -1,6 +1,6 @@
+import logging
+import logging.config
 import yaml
-
-from logging.config import dictConfig
 
 from insights import dr, apply_default_enabled, apply_configs
 from insights.formats.text import HumanReadableFormat
@@ -10,13 +10,10 @@ from .consumers.cli import Interactive
 from .publishers.cli import StdOut
 from .watchers import EngineWatcher, ConsumerWatcher
 
-try:
-    Loader = yaml.CSafeLoader
-except:
-    Loader = yaml.SafeLoader
+Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
 
-class AppBuilder(object):
+class AppBuilder:
     def __init__(self, manifest):
         if not isinstance(manifest, dict):
             manifest = yaml.load(manifest, Loader=Loader)
@@ -103,7 +100,10 @@ class AppBuilder(object):
 
     def build_app(self):
         log_config = self._get_log_config()
-        dictConfig(log_config)
+        if log_config:
+            logging.config.dictConfig(log_config)
+        else:
+            logging.basicConfig(level=logging.DEBUG)
 
         self._load_plugins()
         apply_default_enabled(self.plugins)

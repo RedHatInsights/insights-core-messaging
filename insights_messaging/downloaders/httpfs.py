@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
 
 
-class Http(object):
+class Http:
     def __init__(self, tmp_dir=None, chunk_size=16 * 1024):
         self.session = requests.Session()
 
@@ -12,7 +12,7 @@ class Http(object):
         password = os.environ.get("httpfs_password")
 
         if user is not None and password is not None:
-            session.auth = (user, password)
+            self.session.auth = (user, password)
         self.tmp_dir = tmp_dir
         self.chunk_size = chunk_size
 

@@ -3,7 +3,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class Watched(object):
+class Watched:
     """
     Generic base class for subclasses that support notifying a list of event
     watchers.
@@ -24,7 +24,7 @@ class Watched(object):
                 log.exception(ex)
 
 
-class Watcher(object):
+class Watcher:
     def watch(self, watched):
         watched.add_watcher(self)
 
