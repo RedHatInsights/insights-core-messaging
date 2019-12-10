@@ -14,7 +14,7 @@ configs:
 service:
     extract_timeout:
     extract_tmp_dir:
-    format: insights_messaging.formats.rhel_stats.Stats
+    format: insights.formats._json.JsonFormat
     target_components:
         - examples.rules.bash_version.report
         - insights.parsers.redhat_release

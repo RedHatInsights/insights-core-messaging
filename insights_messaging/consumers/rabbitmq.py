@@ -10,7 +10,10 @@ class RabbitMQ(Consumer):
                  auth=None, durable=False, prefetch_count=1):
         super().__init__(publisher, downloader, engine)
 
-        creds = pika.credentials.PlainCredentials(**auth) if auth is not None else None
+        if auth is not None:
+            creds = pika.credentials.PlainCredentials(**auth)
+        else:
+            creds = None
 
         if creds is not None:
             conn_params["credentials"] = creds
@@ -22,6 +25,7 @@ class RabbitMQ(Consumer):
         channel.queue_declare(queue=queue, durable=durable)
         channel.basic_qos(prefetch_count=prefetch_count)
         channel.basic_consume(queue=queue, on_message_callback=self._callback)
+        self.channel = channel
 
     def _callback(self, ch, method, properties, body):
         input_msg = self.deserialize(body)
@@ -34,6 +38,9 @@ class RabbitMQ(Consumer):
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     def deserialize(self, bytes_):
+        raise NotImplementedError()
+
+    def get_url(self, input_msg):
         raise NotImplementedError()
 
     def run(self):
