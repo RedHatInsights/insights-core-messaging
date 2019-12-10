@@ -13,6 +13,7 @@ runtime = set([
     "insights-core",
     "requests",
     "s3fs",
+    "retry",
 ])
 
 kafka = set([
