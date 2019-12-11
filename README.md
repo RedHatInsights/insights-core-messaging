@@ -113,6 +113,10 @@ class LocalStatWatcher(EngineWatcher):
         pprint({"times": times, "archives": self.archives})
 ```
 
+Logging
+-------
+Standard [logging configuration](https://docs.python.org/3.7/library/logging.config.html#logging-config-dictschema) can be specified under the `logging` key.
+
 Example Configuration
 ---------------------
 The plugins and configs section of the configuration are standard insights
@@ -137,7 +141,7 @@ an archive. It raises an exception if the timeout is exceeded or tries forever
 if no timeout is specified.
 
 ```yaml
-# insights.parsers.redhat_release must be loaded and enabled for 
+# insights.parsers.redhat_release must be loaded and enabled for
 # insights_messaging.formats.rhel_stats.Stats to collect product and version
 # info. This is also true for insights.formats._json.JsonFormat.
 plugins:
@@ -146,23 +150,39 @@ plugins:
         - insights.specs.default
         - insights.specs.insights_archive
         - insights.parsers.redhat_release
-        - examples.rules.bash_version
+        - examples.rules
 configs:
     - name: examples.rules.bash_version.report
       enabled: true
 service:
-    extract_timeout:
-    extract_tmp_dir:
-    format: insights_messaging.formats.rhel_stats.Stats
+    extract_timeout: 10
+    extract_tmp_dir: /tmp
+    format: insights_stats_worker.rhel_stats.Stats
     target_components:
         - examples.rules.bash_version.report
         - insights.parsers.redhat_release
     consumer:
-        name: insights_messaging.consumers.cli.Interactive
+        name: insights_stats_worker.consumer.Consumer
+        kwargs:
+            queue: test_job
+            conn_params:
+                host: localhost
+                port: 5672
     publisher:
-        name: insights_messaging.publishers.cli.StdOut
+        name: insights_messaging.publishers.rabbitmq.RabbitMQ
+        kwargs:
+            queue: test_job_response
+            conn_params:
+                host: localhost
+                port: 5672
     downloader:
         name: insights_messaging.downloaders.localfs.LocalFS
     watchers:
         - name: insights_messaging.watchers.stats.LocalStatWatcher
+    logging:
+        version: 1
+        disable_existing_loggers: false
+        loggers:
+            "":
+                level: WARN
 ```
