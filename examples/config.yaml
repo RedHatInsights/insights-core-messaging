@@ -1,4 +1,4 @@
-# insights.parsers.redhat_release must be loaded and enabled for 
+# insights.parsers.redhat_release must be loaded and enabled for
 # insights_messaging.formats.rhel_stats.Stats to collect product and version
 # info. This is also true for insights.formats._json.JsonFormat.
 plugins:
@@ -8,9 +8,9 @@ plugins:
         - insights.specs.insights_archive
         - insights.parsers.redhat_release
         - examples.rules.bash_version
-configs:
-    - name: examples.rules.bash_version.report
-      enabled: true
+    configs:
+        - name: examples.rules.bash_version.report
+          enabled: true
 service:
     extract_timeout:
     extract_tmp_dir:
