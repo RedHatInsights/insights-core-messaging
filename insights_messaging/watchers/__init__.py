@@ -64,12 +64,17 @@ class EngineWatcher(Watcher):
 class ConsumerWatcher(Watcher):
     def on_recv(self, input_msg):
         """
-        Fired after the consumer recieves a message to process.
+        Fired after the consumer receives a message to process.
         """
 
     def on_download(self, path):
         """
         Fired after the consumer downloads an archive to path.
+        """
+
+    def on_process(self, input_msg, results):
+        """
+        Fired after the consumer finishes processing downloaded data.
         """
 
     def on_consumer_success(self, input_msg, broker, results):

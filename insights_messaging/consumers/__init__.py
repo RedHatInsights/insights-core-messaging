@@ -28,8 +28,9 @@ class Consumer(Watched):
 
                 broker = self.create_broker(input_msg)
                 results = self.engine.process(broker, path)
-                self.publisher.publish(input_msg, results)
+                self.fire("on_process", input_msg, results)
 
+                self.publisher.publish(input_msg, results)
                 self.fire("on_consumer_success", input_msg, broker, results)
         except Exception as ex:
             self.publisher.error(input_msg, ex)
