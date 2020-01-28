@@ -46,9 +46,10 @@ class AppBuilder:
         Consumer = dr.get_component(spec["name"])
         if Consumer is None:
             raise Exception(f"Couldn't find {spec['name']}.")
+        services = spec.get("services")
         args = spec.get("args", [])
         kwargs = spec.get("kwargs", {})
-        return Consumer(publisher, downloader, engine, *args, **kwargs)
+        return Consumer(services, publisher, downloader, engine, *args, **kwargs)
 
     def _get_publisher(self):
         if "publisher" not in self.service:
