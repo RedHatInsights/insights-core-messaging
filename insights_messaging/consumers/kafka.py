@@ -7,6 +7,7 @@ log = logging.getLogger(__name__)
 
 class Kafka(Consumer):
     def __init__(self,
+                 services,
                  publisher,
                  downloader,
                  engine,
