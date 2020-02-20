@@ -13,7 +13,9 @@ class Kafka(Consumer):
                  incoming_topic,
                  group_id,
                  bootstrap_servers,
-                 retry_backoff_ms=1000):
+                 **kwargs):
+
+        retry_backoff_ms = kwargs.pop("retry_backoff_ms", 1000)
 
         super().__init__(publisher, downloader, engine)
         self.consumer = KafkaConsumer(
@@ -22,6 +24,7 @@ class Kafka(Consumer):
             bootstrap_servers=bootstrap_servers,
             value_deserializer=self.deserialize,
             retry_backoff_ms=retry_backoff_ms,
+            **kwargs
         )
 
     def deserialize(self, bytes_):
