@@ -117,6 +117,28 @@ Logging
 -------
 Standard [logging configuration](https://docs.python.org/3.7/library/logging.config.html#logging-config-dictschema) can be specified under the `logging` key.
 
+Environment Variable Substitution
+---------------------------------
+Environment variables may be used in any value position. They can be specified in
+one of three ways:
+
+```yaml
+foo: $SOME_ENV
+foo: ${SOME_ENV}
+foo: ${SOME_ENV:<default value>}
+```
+
+If the environment variable isn't defined, the string value is not modified unless
+a default has been specified. If the environment variable is defined, it will be
+substituted even if its value is nothing.
+
+The default value is everything from the first colon (:) to the first closing
+bracket. Closing brackets can not be escaped.
+
+We first try to convert the value to a boolean if it is "true" or "false" (case
+insensitive), then an int, then a float. If all conversions fail, it's returned
+as a string.
+
 Example Configuration
 ---------------------
 The plugins and configs section of the configuration are standard insights
@@ -140,6 +162,7 @@ will use `/tmp` if no path is provided.
 an archive. It raises an exception if the timeout is exceeded or tries forever
 if no timeout is specified.
 
+
 ```yaml
 # insights.parsers.redhat_release must be loaded and enabled for
 # insights_messaging.formats.rhel_stats.Stats to collect product and version
@@ -156,7 +179,7 @@ configs:
       enabled: true
 service:
     extract_timeout: 10
-    extract_tmp_dir: /tmp
+    extract_tmp_dir: ${TMP_DIR:/tmp}
     format: insights_stats_worker.rhel_stats.Stats
     target_components:
         - examples.rules.bash_version.report
@@ -166,8 +189,8 @@ service:
         kwargs:
             queue: test_job
             conn_params:
-                host: localhost
-                port: 5672
+                host: ${CONSUMER_HOST:localhost}
+                port: ${CONSUMER_PORT:5672}
     publisher:
         name: insights_messaging.publishers.rabbitmq.RabbitMQ
         kwargs:
