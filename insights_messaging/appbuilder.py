@@ -1,5 +1,6 @@
 import logging
 import logging.config
+import os
 import yaml
 
 from insights import dr, apply_default_enabled, apply_configs
@@ -9,8 +10,24 @@ from .engine import Engine
 from .consumers.cli import Interactive
 from .publishers.cli import StdOut
 from .watchers import EngineWatcher, ConsumerWatcher
+from .template import DefaultingTemplate as Template
 
 Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
+
+def resolve_variables(v, env=os.environ):
+    if isinstance(v, str):
+        return Template(v).safe_substitute(env)
+
+    if isinstance(v, dict):
+        for k in v:
+            v[k] = resolve_variables(v[k], env)
+        return v
+
+    if isinstance(v, list):
+        return [resolve_variables(i, env) for i in v]
+
+    return v
 
 
 class AppBuilder:
@@ -18,7 +35,8 @@ class AppBuilder:
         if not isinstance(manifest, dict):
             manifest = yaml.load(manifest, Loader=Loader)
 
-        self.manifest = manifest
+        manifest = resolve_variables(manifest)
+
         self.plugins = manifest.get("plugins", {})
         self.service = manifest.get("service", {})
         self.configs = manifest.get("configs", {})
