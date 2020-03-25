@@ -162,6 +162,9 @@ will use `/tmp` if no path is provided.
 an archive. It raises an exception if the timeout is exceeded or tries forever
 if no timeout is specified.
 
+`extract_memory_limit` is the limit of virtual memory bytes that the extraction
+of an archive can take. It raises an exception if the memory limit is exceeded.
+
 
 ```yaml
 # insights.parsers.redhat_release must be loaded and enabled for
@@ -179,6 +182,7 @@ configs:
       enabled: true
 service:
     extract_timeout: 10
+    extract_memory_limit: 100000000
     extract_tmp_dir: ${TMP_DIR:/tmp}
     format: insights_stats_worker.rhel_stats.Stats
     target_components:

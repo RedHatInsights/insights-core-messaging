@@ -11,6 +11,7 @@ plugins:
         - publishers
 service:
     extract_timeout: 10
+    extract_memory_limit: 100000
     extract_tmp_dir:
     consumer:
         name: consumers.process_report.ProcessReport
@@ -81,6 +82,7 @@ def test_resolve_variables():
     res = resolve_variables(CONF)
     assert res["plugins"]["default_component_enabled"] is True
     assert res["service"]["extract_timeout"] == 10
+    assert res["service"]["extract_memory_limit"] == 100000
     assert res["service"]["consumer"]["kwargs"]["bootstrap_server"] == "$BOOTSTRAP_URL"
     assert res["service"]["consumer"]["kwargs"]["security_protocol"] == "SSL"
     assert res["service"]["consumer"]["kwargs"]["ssl_cafile"] == "/mnt/cert.crt"

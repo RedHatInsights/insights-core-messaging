@@ -1,3 +1,7 @@
+"""
+engine module contains the Engine class.
+"""
+
 import logging
 from io import StringIO
 from insights.core import dr
@@ -10,23 +14,26 @@ log = logging.getLogger(__name__)
 
 
 class Engine(Watched):
-    def __init__(self, comps=None, Format=Formatter, timeout=None, tmp_dir=None):
+    """Engine class encapsulates the usage of the insights library."""
+    def __init__(self, comps=None, Format=Formatter, timeout=None, memory_limit=None, tmp_dir=None):
+        """Engine constructor."""
         super().__init__()
         self.comps = comps
         self.Format = Format
         self.timeout = timeout
+        self.memory_limit = memory_limit
         self.tmp_dir = tmp_dir
 
     def process(self, broker, path):
+        """"""
         for w in self.watchers:
             w.watch_broker(broker)
-
-        result = None
 
         try:
             self.fire("pre_extract", broker, path)
 
-            with extract(path, timeout=self.timeout, extract_dir=self.tmp_dir) as extraction:
+            with extract(path, timeout=self.timeout, memory_limit=self.memory_limit,
+                         extract_dir=self.tmp_dir) as extraction:
                 ctx = create_context(extraction.tmp_dir)
                 broker[ctx.__class__] = ctx
 
