@@ -1,29 +1,30 @@
 import logging
+
 from confluent_kafka import Consumer as ConfluentConsumer
-
 from insights_messaging.consumers import Consumer
-
 
 log = logging.getLogger(__name__)
 
 
 class Kafka(Consumer):
-    def __init__(self,
-                 publisher,
-                 downloader,
-                 engine,
-                 incoming_topic,
-                 group_id,
-                 bootstrap_servers,
-                 **kwargs):
+    def __init__(
+        self,
+        publisher,
+        downloader,
+        engine,
+        incoming_topic,
+        group_id,
+        bootstrap_servers,
+        **kwargs
+    ):
 
         super().__init__(publisher, downloader, engine)
         config = kwargs.copy()
         config["group.id"] = group_id
-        config["bootstrap.servers"] = bootstrap_servers[0]
+        config["bootstrap.servers"] = ",".join(bootstrap_servers)
         log.info("config", extra={"config": config})
 
-        self.auto_commit = kwargs.get("enable.auto.commit", False)
+        self.auto_commit = kwargs.get("enable.auto.commit", True)
         self.consumer = ConfluentConsumer(config)
 
         self.consumer.subscribe([incoming_topic])
