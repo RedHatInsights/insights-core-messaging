@@ -26,7 +26,9 @@ class Engine(Watched):
         try:
             self.fire("pre_extract", broker, path)
 
-            with extract(path, timeout=self.timeout, extract_dir=self.tmp_dir) as extraction:
+            with extract(
+                path, timeout=self.timeout, extract_dir=self.tmp_dir
+            ) as extraction:
                 ctx = create_context(extraction.tmp_dir)
                 broker[ctx.__class__] = ctx
 

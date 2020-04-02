@@ -8,6 +8,7 @@ class Watched:
     Generic base class for subclasses that support notifying a list of event
     watchers.
     """
+
     def __init__(self):
         self.watchers = []
 
@@ -70,6 +71,11 @@ class ConsumerWatcher(Watcher):
     def on_download(self, path):
         """
         Fired after the consumer downloads an archive to path.
+        """
+
+    def on_pre_process(self, input_msg):
+        """
+        Fired before the consumer processes downloaded data.
         """
 
     def on_process(self, input_msg, results):

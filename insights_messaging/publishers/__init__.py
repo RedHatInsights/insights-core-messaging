@@ -1,4 +1,3 @@
-
 class Publisher:
     def publish(self, input_msg, response):
         pass
