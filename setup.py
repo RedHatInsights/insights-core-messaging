@@ -14,6 +14,7 @@ runtime = set([
     "requests",
     "s3fs",
     "retry",
+    "prometheus_client",
 ])
 
 kafka = set([

@@ -1,7 +1,8 @@
 import logging
-from insights import dr
-from insights_messaging.watchers import Watched
 
+from insights import dr
+
+from insights_messaging.watchers import Watched
 
 log = logging.getLogger(__name__)
 
