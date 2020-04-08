@@ -110,6 +110,9 @@ class AppBuilder:
     def _get_extract_timeout(self):
         return self.service.get("extract_timeout")
 
+    def _get_extract_memory_limit(self):
+        return self.service.get("extract_memory_limit")
+
     def _get_extract_tmp_dir(self):
         return self.service.get("extract_tmp_dir")
 
@@ -131,8 +134,10 @@ class AppBuilder:
         publisher = self._get_publisher()
         downloader = self._get_downloader()
         timeout = self._get_extract_timeout()
+        memory_limit = self._get_extract_memory_limit()
         tmp_dir = self._get_extract_tmp_dir()
-        engine = Engine(target_components, self._get_format(), timeout=timeout, tmp_dir=tmp_dir)
+        engine = Engine(target_components, self._get_format(), timeout=timeout, memory_limit=memory_limit,
+                        tmp_dir=tmp_dir)
         consumer = self._get_consumer(publisher, downloader, engine)
 
         for w in self._get_watchers():
