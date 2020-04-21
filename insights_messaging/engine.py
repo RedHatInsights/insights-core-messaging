@@ -1,12 +1,21 @@
 import logging
+import time
 from io import StringIO
+
 from insights.core import dr
 from insights.core.archives import extract
 from insights.core.hydration import create_context
 from insights.formats import Formatter
+from prometheus_client import Summary
+
 from insights_messaging.watchers import Watched
 
 log = logging.getLogger(__name__)
+
+PREFIX = __name__.replace(".", "_")
+
+EXTRACTION_TIME = Summary(f"{PREFIX}_extraction_time", "Time spent extracting")
+RUN_TIME = Summary(f"{PREFIX}_run_time", "Time spent executing rule processing")
 
 
 class Engine(Watched):
@@ -26,7 +35,11 @@ class Engine(Watched):
         try:
             self.fire("pre_extract", broker, path)
 
-            with extract(path, timeout=self.timeout, extract_dir=self.tmp_dir) as extraction:
+            start = time.time()
+            with extract(
+                path, timeout=self.timeout, extract_dir=self.tmp_dir
+            ) as extraction:
+                EXTRACTION_TIME.observe(time.time() - start)
                 ctx = create_context(extraction.tmp_dir)
                 broker[ctx.__class__] = ctx
 
@@ -34,7 +47,9 @@ class Engine(Watched):
 
                 output = StringIO()
                 with self.Format(broker, stream=output):
+                    start = time.time()
                     dr.run(self.comps, broker=broker)
+                    RUN_TIME.observe(time.time() - start)
                 output.seek(0)
                 result = output.read()
                 self.fire("on_engine_success", broker, result)

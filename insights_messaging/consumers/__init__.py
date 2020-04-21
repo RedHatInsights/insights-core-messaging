@@ -1,7 +1,8 @@
 import logging
-from insights import dr
-from insights_messaging.watchers import Watched
 
+from insights import dr
+
+from insights_messaging.watchers import Watched
 
 log = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class Consumer(Watched):
                 self.fire("on_download", path)
 
                 broker = self.create_broker(input_msg)
+                self.fire("on_pre_process", input_msg)
                 results = self.engine.process(broker, path)
                 self.fire("on_process", input_msg, results)
 

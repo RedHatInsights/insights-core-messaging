@@ -1,16 +1,18 @@
 import logging
 import logging.config
 import os
+
 import yaml
 
-from insights import dr, apply_default_enabled, apply_configs
+from insights import apply_configs, apply_default_enabled, dr
 from insights.formats.text import HumanReadableFormat
+
+from .consumers.cli import Interactive
 from .downloaders.localfs import LocalFS
 from .engine import Engine
-from .consumers.cli import Interactive
 from .publishers.cli import StdOut
-from .watchers import EngineWatcher, ConsumerWatcher
 from .template import DefaultingTemplate as Template
+from .watchers import ConsumerWatcher, EngineWatcher
 
 Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
@@ -113,6 +115,10 @@ class AppBuilder:
     def _get_extract_tmp_dir(self):
         return self.service.get("extract_tmp_dir")
 
+    def _get_engine(self, components, formatter, timeout=None, tmp_dir=None):
+        cls = self._load(self.service["engine"]) if "engine" in self.service else Engine
+        return cls(components, formatter, timeout=timeout, tmp_dir=tmp_dir)
+
     def _get_log_config(self):
         return self.service.get("logging", {})
 
@@ -132,7 +138,9 @@ class AppBuilder:
         downloader = self._get_downloader()
         timeout = self._get_extract_timeout()
         tmp_dir = self._get_extract_tmp_dir()
-        engine = Engine(target_components, self._get_format(), timeout=timeout, tmp_dir=tmp_dir)
+        engine = self._get_engine(
+            target_components, self._get_format(), timeout=timeout, tmp_dir=tmp_dir
+        )
         consumer = self._get_consumer(publisher, downloader, engine)
 
         for w in self._get_watchers():
