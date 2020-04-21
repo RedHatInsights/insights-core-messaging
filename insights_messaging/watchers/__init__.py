@@ -1,30 +1,79 @@
+import inspect
 import logging
+
+from contextlib import contextmanager
 
 log = logging.getLogger(__name__)
 
 
 class Watched:
     """
-    Generic base class for subclasses that support notifying a list of event
-    watchers.
+    Base class for subclasses that support notifying a list of event watchers.
     """
+
     def __init__(self):
         self.watchers = []
 
     def add_watcher(self, w):
         self.watchers.append(w)
 
-    def fire(self, event, *args):
+    def fire(self, event, *args, **kwargs):
         for w in self.watchers:
             try:
-                func = getattr(w, event, None)
-                if func is not None:
-                    func(*args)
+                func = getattr(w, event)
+                func(*args, **kwargs)
+            except AttributeError:
+                pass
             except Exception as ex:
                 log.exception(ex)
 
+    @contextmanager
+    def context_event(self, name, *args, **kwargs):
+        # Run the watch functions up to their yields. Do this is reverse so the
+        # first thing registered is the last thing called and therefore closest
+        # to the watched code.
+        alive = []
+        for watcher in reversed(self.watchers):
+            try:
+                func = getattr(watcher, name)
+                if inspect.isgeneratorfunction(func):
+                    gen = func(*args, **kwargs)
+                    next(gen)
+                    alive.append(gen)
+                else:
+                    log.warn(f"{func} should yield.")
+            except AttributeError:
+                pass
+            except Exception as ex:
+                log.exception(ex)
+
+        # Give control back to the caller. If it raises an exception, pass
+        # that exception along to all watchers.
+        ex = None
+        try:
+            yield
+        except Exception as e:
+            ex = e
+            raise
+        finally:
+            # Allow the watch functions to complete. The last thing in
+            # self.watchers will be the first thing in alive since we reversed
+            # the watcher list when running them above.
+            for gen in alive:
+                try:
+                    gen.send(ex)
+                except StopIteration:
+                    pass
+                except Exception as ex:
+                    log.exception(ex)
+
 
 class Watcher:
+    """
+    Watchers should implement functions named the same as events they care
+    about.
+    """
+
     def watch(self, watched):
         watched.add_watcher(self)
 
