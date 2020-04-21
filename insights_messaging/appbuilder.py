@@ -41,7 +41,6 @@ class AppBuilder:
 
         self.plugins = manifest.get("plugins", {})
         self.service = manifest.get("service", {})
-        self.configs = manifest.get("configs", {})
 
     def _load_packages(self, pkgs):
         for p in pkgs:

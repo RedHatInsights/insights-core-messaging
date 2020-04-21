@@ -174,9 +174,9 @@ plugins:
         - insights.specs.insights_archive
         - insights.parsers.redhat_release
         - examples.rules
-configs:
-    - name: examples.rules.bash_version.report
-      enabled: true
+    configs:
+        - name: examples.rules.bash_version.report
+          enabled: true
 service:
     extract_timeout: 10
     extract_tmp_dir: ${TMP_DIR:/tmp}
