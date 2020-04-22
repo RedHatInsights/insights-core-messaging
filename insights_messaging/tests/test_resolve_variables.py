@@ -3,7 +3,8 @@ import yaml
 from insights_messaging.appbuilder import resolve_variables
 
 
-CONF = yaml.safe_load("""
+CONF = yaml.safe_load(
+    """
 plugins:
     default_component_enabled: true
     packages:
@@ -74,7 +75,8 @@ service:
                 level: DEBUG
             insights:
                 level: WARNING
-""")
+"""
+)
 
 
 def test_resolve_variables():
@@ -84,5 +86,8 @@ def test_resolve_variables():
     assert res["service"]["consumer"]["kwargs"]["bootstrap_server"] == "$BOOTSTRAP_URL"
     assert res["service"]["consumer"]["kwargs"]["security_protocol"] == "SSL"
     assert res["service"]["consumer"]["kwargs"]["ssl_cafile"] == "/mnt/cert.crt"
-    assert res["service"]["downloader"]["kwargs"]["endpoint"] == "http://minio-service:9000"
+    assert (
+        res["service"]["downloader"]["kwargs"]["endpoint"]
+        == "http://minio-service:9000"
+    )
     assert res["service"]["watchers"][0]["kwargs"]["prometheus_port"] == 8002
