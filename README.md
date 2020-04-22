@@ -2,6 +2,14 @@ Construct an insights archive processing application by providing a
 configuration file that specifies its components. The building blocks
 are described below.
 
+Engine
+------
+An engine encapsulates the process of evaluating an archive with insights. It
+has parameters for its result formatter, a subset of the loaded components to
+evaluate, an archive extraction timeout, and a working directory for it to use
+during analysis. A consumer feeds an engine one archive at a time and uses
+a publisher to publish each analysis it produces.
+
 Consumer
 --------
 A consumer retrieves a message at a time from a source, extracts a url from it,
@@ -141,9 +149,8 @@ as a string.
 
 Example Configuration
 ---------------------
-The plugins and configs section of the configuration are standard insights
-configs. The service section contains the components that make up the
-application.
+The plugins section of the configuration is standard insights configs. The
+service section contains the components that make up the application.
 
 The consumer, publisher, downloader, and watchers must contain a full component
 name, and they may contain a list called `args` and a dictionary called
@@ -151,9 +158,13 @@ name, and they may contain a list called `args` and a dictionary called
 In the case of a consumer, they are provided after the standard args of
 publisher, downloader, and engine.
 
+The `format` value is the class name of the result formatter the engine should
+use.  It defaults to `insights.formats.text.HumanReadableFormat`.
+
 The `target_components` list can be used to constrain which loaded components
 are executed. The dependency graph of components whose full names start with
-any element will be executed.
+any element will be executed. If it is empty or the `target_components` key
+doesn't exist, all loaded componets are evaluated.
 
 `extract_tmp_dir` is where the engine will extract archives for analysis. It
 will use `/tmp` if no path is provided.
@@ -162,7 +173,15 @@ will use `/tmp` if no path is provided.
 an archive. It raises an exception if the timeout is exceeded or tries forever
 if no timeout is specified.
 
+The `engine` section specifies which engine class to use. If it exists, it
+takes default configuration from `format`, `target_components`,
+`extract_tmp_dir`, and `extract_timeout` at the same level as the `engine`
+key. If it has a `kwargs` key, any values there override those defaults. If the
+`engine` section doesn't exist, `insights_messaging.engine.Engine` is used and
+takes the default configs.
 
+Custom Engine Config
+--------------------
 ```yaml
 # insights.parsers.redhat_release must be loaded and enabled for
 # insights_messaging.formats.rhel_stats.Stats to collect product and version
@@ -178,12 +197,62 @@ plugins:
         - name: examples.rules.bash_version.report
           enabled: true
 service:
-    extract_timeout: 10
-    extract_tmp_dir: ${TMP_DIR:/tmp}
+    engine:
+        name: examples.engine.CustomEngine
+        kwargs:
+            format: insights_stats_worker.rhel_stats.Stats
+            target_components:
+                - foo.bar.rules
+            extract_timeout: 10
+            extract_tmp_dir: ${TMP_DIR:/tmp}
+    consumer:
+        name: insights_stats_worker.consumer.Consumer
+        kwargs:
+            queue: test_job
+            conn_params:
+                host: ${CONSUMER_HOST:localhost}
+                port: ${CONSUMER_PORT:5672}
+    publisher:
+        name: insights_messaging.publishers.rabbitmq.RabbitMQ
+        kwargs:
+            queue: test_job_response
+            conn_params:
+                host: localhost
+                port: 5672
+    downloader:
+        name: insights_messaging.downloaders.localfs.LocalFS
+    watchers:
+        - name: insights_messaging.watchers.stats.LocalStatWatcher
+    logging:
+        version: 1
+        disable_existing_loggers: false
+        loggers:
+            "":
+                level: WARN
+```
+
+Default Engine Config
+--------------------
+```yaml
+# insights.parsers.redhat_release must be loaded and enabled for
+# insights_messaging.formats.rhel_stats.Stats to collect product and version
+# info. This is also true for insights.formats._json.JsonFormat.
+plugins:
+    default_component_enabled: true
+    packages:
+        - insights.specs.default
+        - insights.specs.insights_archive
+        - insights.parsers.redhat_release
+        - examples.rules
+    configs:
+        - name: examples.rules.bash_version.report
+          enabled: true
+service:
     format: insights_stats_worker.rhel_stats.Stats
     target_components:
-        - examples.rules.bash_version.report
-        - insights.parsers.redhat_release
+        - foo.bar.rules
+    extract_timeout: 10
+    extract_tmp_dir: ${TMP_DIR:/tmp}
     consumer:
         name: insights_stats_worker.consumer.Consumer
         kwargs:

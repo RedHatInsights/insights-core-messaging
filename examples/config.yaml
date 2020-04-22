@@ -12,12 +12,15 @@ plugins:
         - name: examples.rules.bash_version.report
           enabled: true
 service:
-    extract_timeout:
-    extract_tmp_dir:
-    format: insights.formats._json.JsonFormat
-    target_components:
-        - examples.rules.bash_version.report
-        - insights.parsers.redhat_release
+    engine:
+        name: insights_messaging.engine.Engine
+        kwargs:
+            format: insights_stats_worker.rhel_stats.Stats
+            extract_timeout: 10
+            extract_tmp_dir: ${TMP_DIR:/tmp}
+            target_components:
+                - examples.rules.bash_version.report
+                - insights.parsers.redhat_release
     consumer:
         name: insights_messaging.consumers.cli.Interactive
     publisher:

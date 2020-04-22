@@ -8,6 +8,7 @@ class Watched:
     Generic base class for subclasses that support notifying a list of event
     watchers.
     """
+
     def __init__(self):
         self.watchers = []
 

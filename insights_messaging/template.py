@@ -45,11 +45,12 @@ class DefaultingTemplate(Template):
 
     def substitute(*args, **kws):
         if not args:
-            raise TypeError("descriptor 'substitute' of 'Template' object "
-                            "needs an argument")
+            raise TypeError(
+                "descriptor 'substitute' of 'Template' object " "needs an argument"
+            )
         self, *args = args  # allow the "self" keyword be passed
         if len(args) > 1:
-            raise TypeError('Too many positional arguments')
+            raise TypeError("Too many positional arguments")
         if not args:
             mapping = kws
         elif kws:
@@ -60,24 +61,25 @@ class DefaultingTemplate(Template):
         # Helper function for .sub()
         def convert(mo):
             # Check the most common path first.
-            named = mo.group('named') or mo.group('braced')
+            named = mo.group("named") or mo.group("braced")
             if named is not None:
                 return self.extract_value(mapping, named)
-            if mo.group('escaped') is not None:
+            if mo.group("escaped") is not None:
                 return self.delimiter
-            if mo.group('invalid') is not None:
+            if mo.group("invalid") is not None:
                 self._invalid(mo)
-            raise ValueError('Unrecognized named group in pattern',
-                             self.pattern)
+            raise ValueError("Unrecognized named group in pattern", self.pattern)
+
         return _infer_type(self.pattern.sub(convert, self.template))
 
     def safe_substitute(*args, **kws):
         if not args:
-            raise TypeError("descriptor 'safe_substitute' of 'Template' object "
-                            "needs an argument")
+            raise TypeError(
+                "descriptor 'safe_substitute' of 'Template' object " "needs an argument"
+            )
         self, *args = args  # allow the "self" keyword be passed
         if len(args) > 1:
-            raise TypeError('Too many positional arguments')
+            raise TypeError("Too many positional arguments")
         if not args:
             mapping = kws
         elif kws:
@@ -87,16 +89,16 @@ class DefaultingTemplate(Template):
 
         # Helper function for .sub()
         def convert(mo):
-            named = mo.group('named') or mo.group('braced')
+            named = mo.group("named") or mo.group("braced")
             if named is not None:
                 try:
                     return self.extract_value(mapping, named)
                 except KeyError:
                     return mo.group()
-            if mo.group('escaped') is not None:
+            if mo.group("escaped") is not None:
                 return self.delimiter
-            if mo.group('invalid') is not None:
+            if mo.group("invalid") is not None:
                 return mo.group()
-            raise ValueError('Unrecognized named group in pattern',
-                             self.pattern)
+            raise ValueError("Unrecognized named group in pattern", self.pattern)
+
         return _infer_type(self.pattern.sub(convert, self.template))

@@ -5,7 +5,6 @@ import os
 import yaml
 
 from insights import apply_configs, apply_default_enabled, dr
-from insights.formats.text import HumanReadableFormat
 
 from .consumers.cli import Interactive
 from .downloaders.localfs import LocalFS
@@ -49,15 +48,6 @@ class AppBuilder:
     def _load_plugins(self):
         self._load_packages(self.plugins.get("packages", []))
 
-    def _get_format(self):
-        if "format" not in self.service:
-            return HumanReadableFormat
-        name = self.service["format"]
-        fmt = dr.get_component(name)
-        if fmt is None:
-            raise Exception(f"Couldn't find {name}.")
-        return fmt
-
     def _get_consumer(self, publisher, downloader, engine):
         if "consumer" not in self.service:
             return Interactive(publisher, downloader, engine)
@@ -80,13 +70,37 @@ class AppBuilder:
         kwargs = spec.get("kwargs", {})
         return Publisher(*args, **kwargs)
 
+    def _get_graphs(self, target_components):
+        graph = {}
+        tc = tuple(target_components or [])
+        if tc:
+            for c in dr.DELEGATES:
+                if dr.get_name(c).startswith(tc):
+                    graph.update(dr.get_dependency_graph(c))
+        return graph
+
+    def _resolve_engine_config(self, config):
+        return {
+            "formatter": dr.get_component(config.get("format")),
+            "target_components": self._get_graphs(config.get("target_components", [])),
+            "extract_timeout": config.get("extract_timeout"),
+            "extract_tmp_dir": config.get("extract_tmp_dir"),
+        }
+
     def _get_engine(self):
+        engine_config = self._resolve_engine_config(self.service)
+
         if "engine" not in self.service:
-            return Engine
+            return Engine(**engine_config)
+
         spec = self.service["engine"]
-        if spec is None:
+        kwargs = spec.get("kwargs", {})
+        engine_config.update(self._resolve_engine_config(kwargs))
+
+        EngineCls = dr.get_component(spec["name"])
+        if EngineCls is None:
             raise Exception(f"Couldn't find {spec['name']}.")
-        return dr.get_component(spec["name"])
+        return EngineCls(**engine_config)
 
     def _load(self, spec):
         comp = dr.get_component(spec["name"])
@@ -106,22 +120,6 @@ class AppBuilder:
             return []
         return [self._load(w) for w in self.service["watchers"]]
 
-    def _get_target_components(self):
-        tc = tuple(self.service.get("target_components", []))
-        if not tc:
-            return
-        graph = {}
-        for c in dr.DELEGATES:
-            if dr.get_name(c).startswith(tc):
-                graph.update(dr.get_dependency_graph(c))
-        return graph or None
-
-    def _get_extract_timeout(self):
-        return self.service.get("extract_timeout")
-
-    def _get_extract_tmp_dir(self):
-        return self.service.get("extract_tmp_dir")
-
     def _get_log_config(self):
         return self.service.get("logging", {})
 
@@ -136,14 +134,9 @@ class AppBuilder:
         apply_default_enabled(self.plugins)
         apply_configs(self.plugins)
 
-        target_components = self._get_target_components()
         publisher = self._get_publisher()
         downloader = self._get_downloader()
-        timeout = self._get_extract_timeout()
-        tmp_dir = self._get_extract_tmp_dir()
-        engine = self._get_engine()(
-            target_components, self._get_format(), timeout=timeout, tmp_dir=tmp_dir
-        )
+        engine = self._get_engine()
         consumer = self._get_consumer(publisher, downloader, engine)
 
         for w in self._get_watchers():
