@@ -44,7 +44,8 @@ class Kafka(Consumer):
 
             err = msg.error()
             if err is not None:
-                # TODO: Should msg be committed?
+                if not self.auto_commit:
+                    self.consumer.commit(msg)
                 log.exception(err)
                 continue
 
