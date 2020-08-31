@@ -1,4 +1,5 @@
 import logging
+import os
 
 from confluent_kafka import Consumer as ConfluentConsumer
 from insights_messaging.consumers import Consumer
@@ -22,6 +23,7 @@ class Kafka(Consumer):
         config = kwargs.copy()
         config["group.id"] = group_id
         config["bootstrap.servers"] = ",".join(bootstrap_servers)
+        config["group.instance.id"] = kwargs.get("group.instance.id", os.environ.get("HOSTNAME")
         log.info("config", extra={"config": config})
 
         self.auto_commit = kwargs.get("enable.auto.commit", True)
