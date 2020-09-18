@@ -26,6 +26,7 @@ class Kafka(Consumer):
         config["group.instance.id"] = kwargs.get("group.instance.id", os.environ.get("HOSTNAME"))
         log.info("config", extra={"config": config})
 
+        self.redis = kwargs.pop("redis")
         self.auto_commit = kwargs.get("enable.auto.commit", True)
         self.consumer = ConfluentConsumer(config)
 
