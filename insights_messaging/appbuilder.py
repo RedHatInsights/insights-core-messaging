@@ -1,7 +1,6 @@
 import logging
 import logging.config
 import os
-import redis
 
 import yaml
 
@@ -104,8 +103,8 @@ class AppBuilder:
         return EngineCls(**engine_config)
 
     def _get_redis(self):
-        # ree dis
         if "redis" in self.service:
+            import redis
             cfg = self.service["redis"]
             return redis.Redis(host=cfg["hostname", port=cfg["port"])
 
