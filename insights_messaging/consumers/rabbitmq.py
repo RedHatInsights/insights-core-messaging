@@ -12,13 +12,14 @@ class RabbitMQ(Consumer):
         publisher,
         downloader,
         engine,
+        redis,
         queue,
         conn_params,
         auth=None,
         durable=False,
         prefetch_count=1,
     ):
-        super().__init__(publisher, downloader, engine)
+        super().__init__(publisher, downloader, engine, redis)
         self.queue = queue
         self.prefetch_count = prefetch_count
         self.durable = durable

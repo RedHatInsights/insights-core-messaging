@@ -58,9 +58,7 @@ class AppBuilder:
             raise Exception(f"Couldn't find {spec['name']}.")
         args = spec.get("args", [])
         kwargs = spec.get("kwargs", {})
-        if redis:
-            kwargs["redis"] = redis
-        return Consumer(publisher, downloader, engine, *args, **kwargs)
+        return Consumer(publisher, downloader, engine, redis=redis, *args, **kwargs)
 
     def _get_publisher(self):
         if "publisher" not in self.service:
