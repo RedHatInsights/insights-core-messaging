@@ -36,7 +36,7 @@ class Engine(Watched):
             with extract(
                 path, timeout=self.extract_timeout, extract_dir=self.extract_tmp_dir
             ) as extraction:
-                broker, ctx = initialize_broker(extraction.tmp_dir)
+                ctx, broker = initialize_broker(extraction.tmp_dir)
 
                 self.fire("on_extract", ctx, broker, extraction)
 
