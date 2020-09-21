@@ -3,7 +3,7 @@ from io import StringIO
 
 from insights.core import dr
 from insights.core.archives import extract
-from insights.core.hydration import create_context
+from insights.core.hydration import initialize_broker
 from insights.formats.text import HumanReadableFormat
 from insights_messaging.watchers import Watched
 
@@ -36,8 +36,7 @@ class Engine(Watched):
             with extract(
                 path, timeout=self.extract_timeout, extract_dir=self.extract_tmp_dir
             ) as extraction:
-                ctx = create_context(extraction.tmp_dir)
-                broker[ctx.__class__] = ctx
+                ctx, broker = initialize_broker(extraction.tmp_dir)
 
                 self.fire("on_extract", ctx, broker, extraction)
 
