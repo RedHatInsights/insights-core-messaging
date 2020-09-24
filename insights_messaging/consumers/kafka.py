@@ -1,9 +1,17 @@
 import logging
 
 from confluent_kafka import Consumer as ConfluentConsumer
+from confluent_kafka import Producer as ConfluentProducer
 from insights_messaging.consumers import Consumer
 
 log = logging.getLogger(__name__)
+
+
+class Requeue(Exception):
+    '''
+    An exception used to signal a requeue request.
+    '''
+    pass
 
 
 class Kafka(Consumer):
@@ -19,6 +27,7 @@ class Kafka(Consumer):
     ):
 
         super().__init__(publisher, downloader, engine)
+        self.topic = incoming_topic
         config = kwargs.copy()
         config["group.id"] = group_id
         config["bootstrap.servers"] = ",".join(bootstrap_servers)
@@ -27,8 +36,9 @@ class Kafka(Consumer):
         self.auto_commit = kwargs.get("enable.auto.commit", True)
         self.consumer = ConfluentConsumer(config)
 
-        self.consumer.subscribe([incoming_topic])
-        log.info("subscribing to %s: %s", incoming_topic, self.consumer)
+        self.consumer.subscribe([self.topic])
+        log.info("subscribing to %s: %s", self.topic, self.consumer)
+        self.requeuer = ConfluentProducer(config)
 
     def deserialize(self, bytes_):
         raise NotImplementedError()
@@ -54,6 +64,9 @@ class Kafka(Consumer):
                     payload = self.deserialize(val)
                     if self.handles(payload):
                         self.process(payload)
+                except Requeue:
+                    log.info("produce() asked to requeue the message")
+                    self.requeuer.produce(self.topic, val)
                 except Exception as ex:
                     log.exception(ex)
                 finally:
