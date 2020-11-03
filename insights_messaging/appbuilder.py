@@ -106,9 +106,11 @@ class AppBuilder:
         if "redis" in self.service:
             import redis
             cfg = self.service["redis"]
-            return redis.Redis(host=cfg["hostname"],
-                               port=cfg["port"],
-                               password=cfg.get("password"),
+            hostname = cfg.get("hostname") if cfg.get("hostname") is not None else os.environ.get("REDIS_HOSTNAME")
+            password = cfg.get("password") if cfg.get("password") is not None else os.environ.get("REDIS_PASSWORD")
+            return redis.Redis(host=hostname,
+                               port=cfg.get("port", 6379),
+                               password=password,
                                decode_responses=cfg.get("decode_responses"))
 
     def _load(self, spec):
