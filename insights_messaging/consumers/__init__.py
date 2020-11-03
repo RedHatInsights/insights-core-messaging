@@ -7,11 +7,12 @@ log = logging.getLogger(__name__)
 
 
 class Consumer(Watched):
-    def __init__(self, publisher, downloader, engine):
+    def __init__(self, publisher, downloader, engine, redis):
         super().__init__()
         self.publisher = publisher
         self.downloader = downloader
         self.engine = engine
+        self.redis = redis
 
     def run(self):
         raise NotImplementedError()

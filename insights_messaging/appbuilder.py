@@ -48,7 +48,7 @@ class AppBuilder:
     def _load_plugins(self):
         self._load_packages(self.plugins.get("packages", []))
 
-    def _get_consumer(self, publisher, downloader, engine):
+    def _get_consumer(self, publisher, downloader, engine, redis=None):
         if "consumer" not in self.service:
             return Interactive(publisher, downloader, engine)
         spec = self.service["consumer"]
@@ -57,7 +57,7 @@ class AppBuilder:
             raise Exception(f"Couldn't find {spec['name']}.")
         args = spec.get("args", [])
         kwargs = spec.get("kwargs", {})
-        return Consumer(publisher, downloader, engine, *args, **kwargs)
+        return Consumer(publisher, downloader, engine, redis=redis, *args, **kwargs)
 
     def _get_publisher(self):
         if "publisher" not in self.service:
@@ -102,6 +102,15 @@ class AppBuilder:
             raise Exception(f"Couldn't find {spec['name']}.")
         return EngineCls(**engine_config)
 
+    def _get_redis(self):
+        if "redis" in self.service:
+            import redis
+            cfg = self.service["redis"]
+            return redis.Redis(host=cfg["hostname"],
+                               port=cfg["port"],
+                               password=cfg.get("password"),
+                               decode_responses=cfg.get("decode_responses"))
+
     def _load(self, spec):
         comp = dr.get_component(spec["name"])
         if comp is None:
@@ -137,7 +146,8 @@ class AppBuilder:
         publisher = self._get_publisher()
         downloader = self._get_downloader()
         engine = self._get_engine()
-        consumer = self._get_consumer(publisher, downloader, engine)
+        redis = self._get_redis()
+        consumer = self._get_consumer(publisher, downloader, engine, redis=redis)
 
         for w in self._get_watchers():
             if isinstance(w, EngineWatcher):

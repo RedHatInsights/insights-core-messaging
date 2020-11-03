@@ -13,13 +13,14 @@ class Kafka(Consumer):
         publisher,
         downloader,
         engine,
+        redis,
         incoming_topic,
         group_id,
         bootstrap_servers,
         **kwargs
     ):
 
-        super().__init__(publisher, downloader, engine)
+        super().__init__(publisher, downloader, engine, redis)
         config = kwargs.copy()
         config["group.id"] = group_id
         config["bootstrap.servers"] = ",".join(bootstrap_servers)
