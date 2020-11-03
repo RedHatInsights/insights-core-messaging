@@ -106,8 +106,10 @@ class AppBuilder:
         if "redis" in self.service:
             import redis
             cfg = self.service["redis"]
-            return redis.Redis(host=cfg["hostname", port=cfg["port"])
-
+            return redis.Redis("host={0}, port={1}, password={2}, decode_responses={3}".format(cfg["hostname"],
+                                                                                              cfg["port"],
+                                                                                              cfg.get("password"),
+                                                                                              cfg.get("decode_responses"))
 
     def _load(self, spec):
         comp = dr.get_component(spec["name"])
