@@ -15,6 +15,12 @@ from .watchers import ConsumerWatcher, EngineWatcher
 
 Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
+CLOWDER_ENABLED = os.environ.get('CLOWDER_ENABLED', False)
+
+if CLOWDER_ENABLED:
+    print("Clowder IS ENABLED")
+    from app_common_python import LoadedConfig, KafkaTopics
+
 
 def resolve_variables(v, env=os.environ):
     if isinstance(v, str):
@@ -48,6 +54,25 @@ class AppBuilder:
     def _load_plugins(self):
         self._load_packages(self.plugins.get("packages", []))
 
+    def _get_consumer_clowder(self, publisher, downloader, engine, redis=None):
+        if "consumer" not in self.service:
+            return Interactive(publisher, downloader, engine)
+        spec = self.service["consumer"]
+        Consumer = dr.get_component(spec["name"])
+        if Consumer is None:
+            raise Exception(f"Couldn't find {spec['name']}.")
+        args = spec.get("args", {})
+        kwargs = spec.get("kwargs", {})
+        clowder_kwargs = {
+            "bootstrap_servers": [
+                f"{LoadedConfig.kafka.brokers[0].hostname}:{LoadedConfig.kafka.brokers[0].port}"
+                ],
+            "incoming_topic": KafkaTopics["platform.inventory.events"].name,
+            #"group_id": KafkaTopics["platform.inventory.events"].consumerGroup
+        }
+        kwargs.update(clowder_kwargs)
+        return Consumer(publisher, downloader, engine, redis=redis, *args, **kwargs)
+
     def _get_consumer(self, publisher, downloader, engine, redis=None):
         if "consumer" not in self.service:
             return Interactive(publisher, downloader, engine)
@@ -58,6 +83,24 @@ class AppBuilder:
         args = spec.get("args", [])
         kwargs = spec.get("kwargs", {})
         return Consumer(publisher, downloader, engine, redis=redis, *args, **kwargs)
+
+    def _get_publisher_clowder(self):
+        if "publisher" not in self.service:
+            return StdOut()
+        spec = self.service["publisher"]
+        Publisher = dr.get_component(spec["name"])
+        if Publisher is None:
+            raise Exception(f"Couldn't find {spec['name']}.")
+        args = spec.get("args", [])
+        kwargs = spec.get("kwargs", {})
+        clowder_kwargs = {
+            "bootstrap_servers": [
+                f"{LoadedConfig.kafka.brokers[0].hostname}:{LoadedConfig.kafka.brokers[0].port}"
+                ],
+            "topic": KafkaTopics["platform.engine.results"].name,
+        }
+        kwargs.update(clowder_kwargs)
+        return Publisher(*args, **kwargs)
 
     def _get_publisher(self):
         if "publisher" not in self.service:
@@ -113,7 +156,24 @@ class AppBuilder:
                                password=password,
                                decode_responses=cfg.get("decode_responses"))
 
+    def _get_redis_clowder(self):
+        if "redis" in self.service:
+            cfg = self.service["redis"]
+            import redis
+            return redis.Redis(
+                host = LoadedConfig.inMemoryDb.hostname,
+                port = LoadedConfig.inMemoryDb.port,
+                password = LoadedConfig.inMemoryDb.password,
+                decode_responses=cfg.get("decode_responses")
+            )
+
     def _load(self, spec):
+        if CLOWDER_ENABLED:
+            return self._load_clowder(spec)
+        else:
+            return self._load_non_clowder(spec)
+
+    def _load_non_clowder(self, spec):
         comp = dr.get_component(spec["name"])
         if comp is None:
             raise Exception(f"Couldn't find {spec['name']}.")
@@ -121,6 +181,23 @@ class AppBuilder:
         kwargs = spec.get("kwargs", {})
         return comp(*args, **kwargs)
 
+    def _load_clowder(self, spec):
+        comp = dr.get_component(spec["name"])
+        if comp is None:
+            raise Exception(f"Couldn't find {spec['name']}.")
+        args = spec.get("args", [])
+        kwargs = spec.get("kwargs", {})
+        if spec.get("needs_kafka", False):
+            clowder_kwargs = {
+                "bootstrap_servers": [
+                    f"{LoadedConfig.kafka.brokers[0].hostname}:{LoadedConfig.kafka.brokers[0].port}"
+                    ],
+                "topic": KafkaTopics["platform.payload-status"].name,
+            }
+            kwargs.update(clowder_kwargs)
+        return comp(*args, **kwargs)
+
+#platform.payload-status
     def _get_downloader(self):
         if "downloader" not in self.service:
             return LocalFS
@@ -137,6 +214,16 @@ class AppBuilder:
     def build_app(self):
         log_config = self._get_log_config()
         if log_config:
+            if CLOWDER_ENABLED:
+                cw_cfg = LoadedConfig.logging.cloudwatch
+                from boto3.session import Session
+                if "handlers" in log_config and "watchtower" in log_config["handlers"]:
+                    log_config["handlers"]["watchtower"]["boto3_session"] = Session(
+                        aws_access_key_id=cw_cfg.accessKeyId,
+                        aws_secret_access_key=cw_cfg.secretAccessKey,
+                        region_name=cw_cfg.region
+                    )
+                    log_config["handlers"]["watchtower"]["log_group"] = cw_cfg.logGroup
             logging.config.dictConfig(log_config)
         else:
             logging.basicConfig(level=logging.DEBUG)
@@ -145,11 +232,16 @@ class AppBuilder:
         apply_default_enabled(self.plugins)
         apply_configs(self.plugins)
 
-        publisher = self._get_publisher()
         downloader = self._get_downloader()
         engine = self._get_engine()
-        redis = self._get_redis()
-        consumer = self._get_consumer(publisher, downloader, engine, redis=redis)
+        if CLOWDER_ENABLED:
+            publisher = self._get_publisher_clowder()
+            redis = self._get_redis_clowder()
+            consumer = self._get_consumer_clowder(publisher, downloader, engine, redis=redis)
+        else:
+            publisher = self._get_publisher()
+            redis = self._get_redis()
+            consumer = self._get_consumer(publisher, downloader, engine, redis=redis)
 
         for w in self._get_watchers():
             if isinstance(w, EngineWatcher):

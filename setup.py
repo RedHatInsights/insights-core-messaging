@@ -11,6 +11,7 @@ develop = set([
 runtime = set([
     "attrs",
     "insights-core",
+    "app-common-python",
     "requests",
     "s3fs",
     "retry",
