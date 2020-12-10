@@ -156,17 +156,6 @@ class AppBuilder:
                                password=password,
                                decode_responses=cfg.get("decode_responses"))
 
-    def _get_redis_clowder(self):
-        if "redis" in self.service:
-            cfg = self.service["redis"]
-            import redis
-            return redis.Redis(
-                host = LoadedConfig.inMemoryDb.hostname,
-                port = LoadedConfig.inMemoryDb.port,
-                password = LoadedConfig.inMemoryDb.password,
-                decode_responses=cfg.get("decode_responses")
-            )
-
     def _load(self, spec):
         if CLOWDER_ENABLED:
             return self._load_clowder(spec)
@@ -236,7 +225,7 @@ class AppBuilder:
         engine = self._get_engine()
         if CLOWDER_ENABLED:
             publisher = self._get_publisher_clowder()
-            redis = self._get_redis_clowder()
+            redis = self._get_redis()
             consumer = self._get_consumer_clowder(publisher, downloader, engine, redis=redis)
         else:
             publisher = self._get_publisher()
