@@ -25,11 +25,6 @@ rabbitmq = set([
     "pika",
 ])
 
-redis = set([
-    "redis",
-])
-
-
 if __name__ == "__main__":
     setup(
         name="insights-core-messaging",
@@ -46,7 +41,6 @@ if __name__ == "__main__":
             'develop': list(develop),
             'kafka': list(kafka),
             'rabbitmq': list(rabbitmq),
-            'redis': list(redis),
         },
         classifiers=[
             'Intended Audience :: Developers',
