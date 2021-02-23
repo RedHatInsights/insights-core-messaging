@@ -2,7 +2,7 @@ import logging
 import os
 
 from confluent_kafka import Consumer as ConfluentConsumer
-from insights_messaging.consumers import Consumer
+from insights_messaging.consumers import Consumer, Requeue
 
 log = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ class Kafka(Consumer):
         incoming_topic,
         group_id,
         bootstrap_servers,
+        requeuer=None,
         **kwargs
     ):
 
@@ -31,6 +32,7 @@ class Kafka(Consumer):
 
         self.consumer.subscribe([incoming_topic])
         log.info("subscribing to %s: %s", incoming_topic, self.consumer)
+        self.requerer = requeuer
 
     def deserialize(self, bytes_):
         raise NotImplementedError()
@@ -57,6 +59,10 @@ class Kafka(Consumer):
                     payload = self.deserialize(val)
                     if self.handles(payload):
                         self.process(payload)
+                except Requeue:
+                    if not self.requerer:
+                        raise Exception("Requeue request with no requerer configured.")
+                    self.requeuer.requeue(val)
                 except Exception as ex:
                     log.exception(ex)
                 finally:
