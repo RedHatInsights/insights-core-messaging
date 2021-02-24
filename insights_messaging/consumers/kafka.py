@@ -59,10 +59,10 @@ class Kafka(Consumer):
                     payload = self.deserialize(val)
                     if self.handles(payload):
                         self.process(payload)
-                except Requeue:
+                except Requeue as req:
                     if not self.requerer:
                         raise Exception("Requeue request with no requerer configured.")
-                    self.requeuer.requeue(val)
+                    self.requeuer.requeue(val, req)
                 except Exception as ex:
                     log.exception(ex)
                 finally:

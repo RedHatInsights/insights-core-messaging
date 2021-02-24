@@ -20,5 +20,5 @@ class KafkaRequeuer(Requeuer):
 
         self.producer = ConfluentProducer(config)
 
-    def requeue(self, msg):
+    def requeue(self, msg, req):
         self.producer.produce(self.topic, msg)
