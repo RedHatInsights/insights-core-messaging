@@ -8,6 +8,7 @@ from insights_messaging.consumers import Consumer
 
 log = logging.getLogger(__name__)
 
+
 class SQS(Consumer):
     def __init__(
         self,
@@ -17,24 +18,25 @@ class SQS(Consumer):
         redis,
         aws_access_key_env,
         aws_secret_access_key_env,
-        queue,
         **kwargs
     ):
 
         super().__init__(publisher, downloader, engine, redis)
 
         aws_access_key_id = os.getenv(aws_access_key_env, "AWS_ACCESS_KEY_ID")
-        aws_secret_access_key = os.getenv(aws_secret_access_key_env, "AWS_SECRET_ACCESS_KEY")
-        
-        self.client = boto3.client("sqs",
-                                   aws_access_key_id=aws_access_key_id,
-                                   aws_secret_access_key=aws_secret_access_key)
-        self.queue = queue
+        aws_secret_access_key = os.getenv(
+            aws_secret_access_key_env, "AWS_SECRET_ACCESS_KEY"
+        )
+        queue_url = kwargs.get("queue_url")
+
+        self.client = boto3.client(
+            "sqs",
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+
+        self.queue_url = queue_url if queue_url else os.getenv("QUEUE_URL")
         self.delete_message = kwargs.get("delete_message")
-        
-    
-    def get_queue_url(self):
-        return self.client.get_queue_url(QueueName=self.queue)
 
     def deserialize(self, bytes_):
         raise NotImplementedError()
@@ -43,17 +45,16 @@ class SQS(Consumer):
         return True
 
     def run(self):
-        queue_url = self.get_queue_url()
-        
+
         while True:
             try:
-                messages = self.client.receive_message(QueueUrl=queue_url["QueueUrl"])
+                messages = self.client.receive_message(QueueUrl=self.queue_url)
                 if messages["Messages"] == []:
                     continue
             except ClientError as e:
                 log.exception(e)
                 continue
-            
+
             for message in messages["Messages"]:
                 try:
                     if self.handles(message):
@@ -62,5 +63,6 @@ class SQS(Consumer):
                     log.exception(ex)
                 finally:
                     if self.delete_message:
-                        self.client.delete(QueueUrl=queue_url,
-                                           ReceiptHandle=message["ReceiptHandle"])
+                        self.client.delete(
+                            QueueUrl=queue_url, ReceiptHandle=message["ReceiptHandle"]
+                        )
