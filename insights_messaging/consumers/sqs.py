@@ -16,26 +16,18 @@ class SQS(Consumer):
         downloader,
         engine,
         redis,
-        aws_access_key_env,
-        aws_secret_access_key_env,
         **kwargs
     ):
 
         super().__init__(publisher, downloader, engine, redis)
 
-        aws_access_key_id = os.getenv(aws_access_key_env, "AWS_ACCESS_KEY_ID")
-        aws_secret_access_key = os.getenv(
-            aws_secret_access_key_env, "AWS_SECRET_ACCESS_KEY"
-        )
-        queue_url = kwargs.get("queue_url")
-
         self.client = boto3.client(
             "sqs",
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
+            aws_access_key_id=kwargs.get("aws_access_key_id"),
+            aws_secret_access_key=kwargs.get("aws_secret_access_key"),
         )
 
-        self.queue_url = queue_url if queue_url else os.getenv("QUEUE_URL")
+        self.queue_url = kwargs.get("queue_url")
         self.delete_message = kwargs.get("delete_message")
 
     def deserialize(self, bytes_):
