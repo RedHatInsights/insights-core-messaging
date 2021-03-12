@@ -27,8 +27,14 @@ class Kafka(Consumer):
         self.auto_commit = kwargs.get("enable.auto.commit", True)
         self.consumer = ConfluentConsumer(config)
 
-        self.consumer.subscribe([incoming_topic])
-        log.info("subscribing to %s: %s", incoming_topic, self.consumer)
+        if type(incoming_topic) == list:
+            self.consumer.subscribe(incoming_topic)
+            log.info("subscribing to topics with consumer %s", self.consumer)
+            for topic in incoming_topic:
+                log.info(" - %s", topic)
+        else:   
+            self.consumer.subscribe([incoming_topic])
+            log.info("subscribing to %s: %s", incoming_topic, self.consumer)
 
     def deserialize(self, bytes_):
         raise NotImplementedError()
