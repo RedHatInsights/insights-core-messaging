@@ -56,7 +56,7 @@ class AppBuilder:
         kwargs = spec.get("kwargs", {})
         return comp(*args, **kwargs)
 
-    def _get_consumer(self, publisher, downloader, engine):
+    def _get_consumer(self, publisher, downloader, engine, requeuer):
         if "consumer" not in self.service:
             return Interactive(publisher, downloader, engine)
         spec = self.service["consumer"]
@@ -65,7 +65,11 @@ class AppBuilder:
             raise Exception(f"Couldn't find {spec['name']}.")
         args = spec.get("args", [])
         kwargs = spec.get("kwargs", {})
-        return Consumer(publisher, downloader, engine, *args, **kwargs)
+        return Consumer(publisher, downloader, engine, *args, requeuer=requeuer, **kwargs)
+
+    def _get_requeuer(self):
+        if "requeuer" in self.service:
+            return self._load(self.service["requeuer"])
 
     def _get_publisher(self):
         if "publisher" not in self.service:
@@ -138,7 +142,8 @@ class AppBuilder:
         downloader = self._get_downloader()
         engine = self._get_engine()
         publisher = self._get_publisher()
-        consumer = self._get_consumer(publisher, downloader, engine)
+        requeuer = self._get_requeuer()
+        consumer = self._get_consumer(publisher, downloader, engine, requeuer)
 
         for w in self._get_watchers():
             if isinstance(w, EngineWatcher):

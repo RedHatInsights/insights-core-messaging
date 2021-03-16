@@ -35,6 +35,15 @@ class Interactive(Consumer):
         return input_msg
 ```
 
+Requeuer
+--------
+A requerer allows a consumer to raise a `Requeue` exception to indicate that
+it couldn't handle the input and would like the requerer to do something with
+it. What the requerer does is open ended: it could put the message onto a
+different topic, send it to a different message broker, store it in a
+database, etc.
+
+
 Publisher
 ---------
 A publisher stores results in some way. For example, it could publish them to
@@ -230,6 +239,13 @@ service:
             conn_params:
                 host: ${CONSUMER_HOST:localhost}
                 port: ${CONSUMER_PORT:5672}
+    requeuer:
+        name: example.requeuer.Requeuer
+        kwargs:
+            queue: retry
+            conn_params:
+                host: ${CONSUMER_HOST:localhost}
+                port: ${CONSUMER_PORT:5672}
     publisher:
         name: insights_messaging.publishers.rabbitmq.RabbitMQ
         kwargs:
@@ -250,7 +266,7 @@ service:
 ```
 
 Default Engine Config
---------------------
+---------------------
 ```yaml
 # insights.parsers.redhat_release must be loaded and enabled for
 # insights_messaging.formats.rhel_stats.Stats to collect product and version
@@ -275,6 +291,13 @@ service:
         name: insights_stats_worker.consumer.Consumer
         kwargs:
             queue: test_job
+            conn_params:
+                host: ${CONSUMER_HOST:localhost}
+                port: ${CONSUMER_PORT:5672}
+    requeuer:
+        name: example.requeuer.Requeuer
+        kwargs:
+            queue: retry
             conn_params:
                 host: ${CONSUMER_HOST:localhost}
                 port: ${CONSUMER_PORT:5672}

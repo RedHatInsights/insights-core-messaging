@@ -1,7 +1,7 @@
 import logging
 import pika
 from retry import retry
-from . import Consumer
+from . import Consumer, Requeue
 
 log = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ class RabbitMQ(Consumer):
         auth=None,
         durable=False,
         prefetch_count=1,
+        requeuer=None,
     ):
         super().__init__(publisher, downloader, engine)
         self.queue = queue
@@ -28,6 +29,7 @@ class RabbitMQ(Consumer):
             conn_params["credentials"] = creds
 
         self.params = pika.ConnectionParameters(**conn_params)
+        self.requerer = requeuer
 
     def open(self):
         self.connection = pika.BlockingConnection(self.params)
@@ -42,6 +44,10 @@ class RabbitMQ(Consumer):
         try:
             self.process(input_msg)
             ch.basic_ack(delivery_tag=method.delivery_tag)
+        except Requeue:
+            if not self.requerer:
+                raise Exception("Requeue request with no requerer configured.")
+            self.requeuer.requeue(body)
         except Exception as ex:
             log.exception(ex)
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
