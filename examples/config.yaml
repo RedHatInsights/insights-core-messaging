@@ -29,6 +29,8 @@ service:
         name: insights_messaging.downloaders.localfs.LocalFS
     watchers:
         - name: insights_messaging.watchers.stats.LocalStatWatcher
+    logging_configurator:
+        name: insights_messaging.tests.test_get_logging_config.custom_log_config
     logging:
         version: 1
         disable_existing_loggers: false

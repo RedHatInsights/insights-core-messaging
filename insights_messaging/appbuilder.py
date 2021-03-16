@@ -48,7 +48,15 @@ class AppBuilder:
     def _load_plugins(self):
         self._load_packages(self.plugins.get("packages", []))
 
-    def _get_consumer(self, publisher, downloader, engine):
+    def _load(self, spec):
+        comp = dr.get_component(spec["name"])
+        if comp is None:
+            raise Exception(f"Couldn't find {spec['name']}.")
+        args = spec.get("args", [])
+        kwargs = spec.get("kwargs", {})
+        return comp(*args, **kwargs)
+
+    def _get_consumer(self, publisher, downloader, engine, requeuer):
         if "consumer" not in self.service:
             return Interactive(publisher, downloader, engine)
         spec = self.service["consumer"]
@@ -57,18 +65,17 @@ class AppBuilder:
             raise Exception(f"Couldn't find {spec['name']}.")
         args = spec.get("args", [])
         kwargs = spec.get("kwargs", {})
-        return Consumer(publisher, downloader, engine, *args, **kwargs)
+        return Consumer(publisher, downloader, engine, *args, requeuer=requeuer, **kwargs)
+
+    def _get_requeuer(self):
+        if "requeuer" in self.service:
+            return self._load(self.service["requeuer"])
 
     def _get_publisher(self):
         if "publisher" not in self.service:
             return StdOut()
         spec = self.service["publisher"]
-        Publisher = dr.get_component(spec["name"])
-        if Publisher is None:
-            raise Exception(f"Couldn't find {spec['name']}.")
-        args = spec.get("args", [])
-        kwargs = spec.get("kwargs", {})
-        return Publisher(*args, **kwargs)
+        return self._load(spec)
 
     def _get_graphs(self, target_components):
         graph = {}
@@ -102,14 +109,7 @@ class AppBuilder:
             raise Exception(f"Couldn't find {spec['name']}.")
         return EngineCls(**engine_config)
 
-    def _load(self, spec):
-        comp = dr.get_component(spec["name"])
-        if comp is None:
-            raise Exception(f"Couldn't find {spec['name']}.")
-        args = spec.get("args", [])
-        kwargs = spec.get("kwargs", {})
-        return comp(*args, **kwargs)
-
+    # platform.payload-status
     def _get_downloader(self):
         if "downloader" not in self.service:
             return LocalFS
@@ -121,7 +121,12 @@ class AppBuilder:
         return [self._load(w) for w in self.service["watchers"]]
 
     def _get_log_config(self):
-        return self.service.get("logging", {})
+        config = self.service.get("logging", {})
+        configurator = self.service.get("logging_configurator")
+        if configurator:
+            c = self._load(configurator)
+            config = c(config)
+        return config
 
     def build_app(self):
         log_config = self._get_log_config()
@@ -134,10 +139,11 @@ class AppBuilder:
         apply_default_enabled(self.plugins)
         apply_configs(self.plugins)
 
-        publisher = self._get_publisher()
         downloader = self._get_downloader()
         engine = self._get_engine()
-        consumer = self._get_consumer(publisher, downloader, engine)
+        publisher = self._get_publisher()
+        requeuer = self._get_requeuer()
+        consumer = self._get_consumer(publisher, downloader, engine, requeuer)
 
         for w in self._get_watchers():
             if isinstance(w, EngineWatcher):

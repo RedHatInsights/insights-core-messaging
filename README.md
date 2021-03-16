@@ -8,7 +8,7 @@ An engine encapsulates the process of evaluating an archive with insights. It
 has parameters for its result formatter, a subset of the loaded components to
 evaluate, an archive extraction timeout, and a working directory for it to use
 during analysis. A consumer feeds an engine one archive at a time and uses
-a publisher to publish each analysis it produces.
+a publisher to publish the results.
 
 Consumer
 --------
@@ -35,12 +35,20 @@ class Interactive(Consumer):
         return input_msg
 ```
 
+Requeuer
+--------
+A requerer allows a consumer to raise a `Requeue` exception to indicate that
+it couldn't handle the input and would like the requerer to do something with
+it. What the requerer does is open ended: it could put the message onto a
+different topic, send it to a different message broker, store it in a
+database, etc.
+
+
 Publisher
 ---------
-A publisher stores archive analysis results in some way. For example, it could
-publish them to a database, post them to a message queue, or display them. It is
-given the original analysis request and the raw result string from the configured
-formatter. It can use both to construct the final response.
+A publisher stores results in some way. For example, it could publish them to
+a database, post them to a message queue, or display them. It is given the
+original request and the raw result string from the configured formatter.
 ```python
 from . import Publisher
 
@@ -52,7 +60,7 @@ class StdOut(Publisher):
 
 Format
 ------
-A format is used by the engine to monitor insights components during an analysis,
+A format is used by the engine to monitor insights components during analysis,
 capture interesting information about them, and convert the results into a string
 that will make up the body of the application's response.
 
@@ -125,10 +133,29 @@ Logging
 -------
 Standard [logging configuration](https://docs.python.org/3.7/library/logging.config.html#logging-config-dictschema) can be specified under the `logging` key.
 
+You can programmatically modify the logging configuration specified above by
+providing a `logging_configurator` key. It should specify a function that
+returns another function. The returned function must accept the existing log
+configuration above and return a modified version of it.
+```yaml
+service:
+    logging_configurator:
+        name: insights_messaging.tests.test_get_logging_config.custom_log_config
+        args: []
+        kwargs: {}
+```
+Example function:
+```python
+def custom_log_config(*args, **kwargs):
+    def inner(config):
+        config["custom_log_stuff"] = "custom config here"
+        return config
+    return inner
+```
 Environment Variable Substitution
 ---------------------------------
-Environment variables may be used in any value position. They can be specified in
-one of three ways:
+Environment variables may be used in any value position. They can be
+specified in one of three ways:
 
 ```yaml
 foo: $SOME_ENV
@@ -212,6 +239,13 @@ service:
             conn_params:
                 host: ${CONSUMER_HOST:localhost}
                 port: ${CONSUMER_PORT:5672}
+    requeuer:
+        name: example.requeuer.Requeuer
+        kwargs:
+            queue: retry
+            conn_params:
+                host: ${CONSUMER_HOST:localhost}
+                port: ${CONSUMER_PORT:5672}
     publisher:
         name: insights_messaging.publishers.rabbitmq.RabbitMQ
         kwargs:
@@ -232,7 +266,7 @@ service:
 ```
 
 Default Engine Config
---------------------
+---------------------
 ```yaml
 # insights.parsers.redhat_release must be loaded and enabled for
 # insights_messaging.formats.rhel_stats.Stats to collect product and version
@@ -260,6 +294,13 @@ service:
             conn_params:
                 host: ${CONSUMER_HOST:localhost}
                 port: ${CONSUMER_PORT:5672}
+    requeuer:
+        name: example.requeuer.Requeuer
+        kwargs:
+            queue: retry
+            conn_params:
+                host: ${CONSUMER_HOST:localhost}
+                port: ${CONSUMER_PORT:5672}
     publisher:
         name: insights_messaging.publishers.rabbitmq.RabbitMQ
         kwargs:
@@ -277,4 +318,8 @@ service:
         loggers:
             "":
                 level: WARN
+    logging_configurator:
+        name: insights_messaging.tests.test_get_logging_config.custom_log_config
+        args: []
+        kwargs: {}
 ```
