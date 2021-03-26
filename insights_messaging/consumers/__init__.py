@@ -6,12 +6,19 @@ from insights_messaging.watchers import Watched
 log = logging.getLogger(__name__)
 
 
+class Requeue(Exception):
+    """
+    An Exception to mesasge a requeue request.
+    """
+
+
 class Consumer(Watched):
-    def __init__(self, publisher, downloader, engine):
+    def __init__(self, publisher, downloader, engine, requeuer=None):
         super().__init__()
         self.publisher = publisher
         self.downloader = downloader
         self.engine = engine
+        self.requerer = requeuer
 
     def run(self):
         raise NotImplementedError()
