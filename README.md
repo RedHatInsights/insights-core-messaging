@@ -37,9 +37,9 @@ class Interactive(Consumer):
 
 Requeuer
 --------
-A requerer allows a consumer to raise a `Requeue` exception to indicate that
-it couldn't handle the input and would like the requerer to do something with
-it. What the requerer does is open ended: it could put the message onto a
+A requeuer allows a consumer to raise a `Requeue` exception to indicate that
+it couldn't handle the input and would like the requeuer to do something with
+it. What the requeuer does is open ended: it could put the message onto a
 different topic, send it to a different message broker, store it in a
 database, etc.
 
