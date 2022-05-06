@@ -18,7 +18,7 @@ class Consumer(Watched):
         self.publisher = publisher
         self.downloader = downloader
         self.engine = engine
-        self.requerer = requeuer
+        self.requeuer = requeuer
 
     def run(self):
         raise NotImplementedError()

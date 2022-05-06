@@ -29,7 +29,7 @@ class RabbitMQ(Consumer):
             conn_params["credentials"] = creds
 
         self.params = pika.ConnectionParameters(**conn_params)
-        self.requerer = requeuer
+        self.requeuer = requeuer
 
     def open(self):
         self.connection = pika.BlockingConnection(self.params)
@@ -45,8 +45,8 @@ class RabbitMQ(Consumer):
             self.process(input_msg)
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Requeue:
-            if not self.requerer:
-                raise Exception("Requeue request with no requerer configured.")
+            if not self.requeuer:
+                raise Exception("Requeue request with no requeuer configured.")
             self.requeuer.requeue(body)
         except Exception as ex:
             log.exception(ex)
