@@ -31,7 +31,7 @@ class Kafka(Consumer):
 
         self.consumer.subscribe([incoming_topic])
         log.info("subscribing to %s: %s", incoming_topic, self.consumer)
-        self.requerer = requeuer
+        self.requeuer = requeuer
 
     def deserialize(self, bytes_):
         raise NotImplementedError()
@@ -59,7 +59,7 @@ class Kafka(Consumer):
                     if self.handles(payload):
                         self.process(payload)
                 except Requeue as req:
-                    if not self.requerer:
+                    if not self.requeuer:
                         raise Exception("Requeue request with no requerer configured.")
                     self.requeuer.requeue(val, req)
                 except Exception as ex:
