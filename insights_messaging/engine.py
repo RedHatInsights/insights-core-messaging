@@ -20,7 +20,8 @@ class Engine(Watched):
     ):
         super().__init__()
         self.Formatter = formatter or HumanReadableFormat
-        self.target_components = target_components
+        self.components_dict = dr.determine_components(target_components)
+        self.target_components = dr.toposort_flatten(self.components_dict, sort=False)
         self.extract_timeout = extract_timeout
         self.extract_tmp_dir = extract_tmp_dir
 
@@ -42,7 +43,7 @@ class Engine(Watched):
 
                 output = StringIO()
                 with self.Formatter(broker, stream=output):
-                    dr.run(self.target_components, broker=broker)
+                    dr.run_components(self.target_components, self.components_dict, broker=broker)
                 output.seek(0)
                 result = output.read()
                 self.fire("on_engine_success", broker, result)
