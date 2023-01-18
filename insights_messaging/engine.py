@@ -20,7 +20,7 @@ class Engine(Watched):
     ):
         super().__init__()
         self.Formatter = formatter or HumanReadableFormat
-        self.components_dict = dr.determine_components(target_components)
+        self.components_dict = dr.determine_components(target_components or dr.COMPONENTS[dr.GROUPS.single])
         self.target_components = dr.toposort_flatten(self.components_dict, sort=False)
         self.extract_timeout = extract_timeout
         self.extract_tmp_dir = extract_tmp_dir
