@@ -2,10 +2,15 @@ import logging
 import os
 
 from confluent_kafka import Consumer as ConfluentConsumer
-from insights_messaging.consumers import Consumer, Requeue
+from insights_messaging.consumers import Consumer, Requeue, MSG_CONTEXT_DICT
 
 log = logging.getLogger(__name__)
 
+def update_msg_context_dict(payload):
+    if payload and "platform_metadata" in payload and 'host' in payload:
+        MSG_CONTEXT_DICT['request_id'] = payload["platform_metadata"].get("request_id")
+        MSG_CONTEXT_DICT['account'] = payload["platform_metadata"].get("account")
+        MSG_CONTEXT_DICT['inventory_id'] = payload["host"].get("id")
 
 class Kafka(Consumer):
     def __init__(
@@ -56,6 +61,7 @@ class Kafka(Consumer):
             if val is not None:
                 try:
                     payload = self.deserialize(val)
+                    update_msg_context_dict(payload)
                     if self.handles(payload):
                         self.process(payload)
                 except Requeue as req:
@@ -65,5 +71,6 @@ class Kafka(Consumer):
                 except Exception as ex:
                     log.exception(ex)
                 finally:
+                    MSG_CONTEXT_DICT = {}  # reset the dict after complete one msg
                     if not self.auto_commit:
                         self.consumer.commit(msg)

@@ -15,6 +15,7 @@ runtime = set([
     "requests",
     "s3fs",
     "retry",
+    "logstash_formatter"
 ])
 
 kafka = set([

@@ -1,12 +1,14 @@
 import logging
 import logging.config
+from logstash_formatter import LogstashFormatterV1
 import os
-
+import sys
 import yaml
 
 from insights import apply_configs, apply_default_enabled, dr
 
 from .consumers.cli import Interactive
+from .consumers import MSG_CONTEXT_DICT
 from .downloaders.localfs import LocalFS
 from .engine import Engine
 from .publishers.cli import StdOut
@@ -133,7 +135,17 @@ class AppBuilder:
         if log_config:
             logging.config.dictConfig(log_config)
         else:
+            handler = logging.StreamHandler(stream=sys.stdout)
+            handler.setFormatter(LogstashFormatterV1())
             logging.basicConfig(level=logging.DEBUG)
+        # add log context for message info
+        origin_factory = logging.getLogRecordFactory()
+        def new_factory_with_context(*args, **kwargs):
+            record = origin_factory(*args, **kwargs)
+            for k, v in MSG_CONTEXT_DICT.items():
+                setattr(record, k, v)
+            return record
+        logging.setLogRecordFactory(new_factory_with_context)
 
         self._load_plugins()
         apply_default_enabled(self.plugins)
