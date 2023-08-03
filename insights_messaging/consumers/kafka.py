@@ -2,15 +2,18 @@ import logging
 import os
 
 from confluent_kafka import Consumer as ConfluentConsumer
-from insights_messaging.consumers import Consumer, Requeue, MSG_CONTEXT_DICT
+from insights_messaging.consumers import Consumer, Requeue, archive_context_var
 
 log = logging.getLogger(__name__)
 
-def update_msg_context_dict(payload):
+def update_archive_context_ids(payload):
     if payload and "platform_metadata" in payload and 'host' in payload:
-        MSG_CONTEXT_DICT['request_id'] = payload["platform_metadata"].get("request_id")
-        MSG_CONTEXT_DICT['account'] = payload["platform_metadata"].get("account")
-        MSG_CONTEXT_DICT['inventory_id'] = payload["host"].get("id")
+        payload_id_dict = {}
+        payload_id_dict['dummy_key'] = 'dummy_value'
+        payload_id_dict['request_id'] = payload["platform_metadata"].get("request_id")
+        payload_id_dict['account'] = payload["platform_metadata"].get("account")
+        payload_id_dict['inventory_id'] = payload["host"].get("id")
+        archive_context_var.set(payload_id_dict)
 
 class Kafka(Consumer):
     def __init__(
@@ -61,9 +64,12 @@ class Kafka(Consumer):
             if val is not None:
                 try:
                     payload = self.deserialize(val)
-                    update_msg_context_dict(payload)
+                    # set the context var according payload info
+                    update_archive_context_ids(payload)
                     if self.handles(payload):
+                        log.info("Start to process one payload")
                         self.process(payload)
+                        log.info("Completed one payload")
                 except Requeue as req:
                     if not self.requeuer:
                         raise Exception("Requeue request with no requeuer configured.")
@@ -71,6 +77,6 @@ class Kafka(Consumer):
                 except Exception as ex:
                     log.exception(ex)
                 finally:
-                    MSG_CONTEXT_DICT = {}  # reset the dict after complete one msg
+                    archive_context_var.set({})  # reset the contextvar
                     if not self.auto_commit:
                         self.consumer.commit(msg)

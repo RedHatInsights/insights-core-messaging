@@ -1,11 +1,20 @@
+from contextvars import ContextVar
 import logging
 from insights import dr
 from insights_messaging.watchers import Watched
 
-
 log = logging.getLogger(__name__)
-# MSG_CONTEXT_DICT is to contain request_id, account and inventory_id
-MSG_CONTEXT_DICT = {}
+archive_context_var = ContextVar('archive_context_ids', default={})
+
+class ArchiveContextIdsInjectingFilter(logging.Filter):
+    """
+    A filter which injects context-specific (inventory id, account id, request id) information into logs.
+    """
+    def filter(self, record):
+        ids_dict = archive_context_var.get()
+        for k, v in ids_dict.items():
+            setattr(record, k, v)
+        return True
 
 class Requeue(Exception):
     """

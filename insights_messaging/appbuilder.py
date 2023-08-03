@@ -8,7 +8,7 @@ import yaml
 from insights import apply_configs, apply_default_enabled, dr
 
 from .consumers.cli import Interactive
-from .consumers import MSG_CONTEXT_DICT
+from .consumers import ArchiveContextIdsInjectingFilter
 from .downloaders.localfs import LocalFS
 from .engine import Engine
 from .publishers.cli import StdOut
@@ -136,17 +136,16 @@ class AppBuilder:
             logging.config.dictConfig(log_config)
         else:
             handler = logging.StreamHandler(stream=sys.stdout)
-            handler.setFormatter(LogstashFormatterV1())
+            handler.setFormatter(LogstashFormatterV1()) # to keep the same format with cloud env
             logging.basicConfig(level=logging.DEBUG)
-        # add log context for message info
-        origin_factory = logging.getLogRecordFactory()
-        def new_factory_with_context(*args, **kwargs):
-            record = origin_factory(*args, **kwargs)
-            for k, v in MSG_CONTEXT_DICT.items():
-                setattr(record, k, v)
-            return record
-        logging.setLogRecordFactory(new_factory_with_context)
+            logging.getLogger("insights.core.dr").setLevel(logging.ERROR)
+            logging.root.removeHandler(logging.root.handlers[0])
+            logging.root.addHandler(handler)
 
+        # add filter for handlers in root logger
+        payload_inject_filter = ArchiveContextIdsInjectingFilter()
+        for i_handler in logging.root.handlers:
+            i_handler.addFilter(payload_inject_filter)
         self._load_plugins()
         apply_default_enabled(self.plugins)
         apply_configs(self.plugins)
