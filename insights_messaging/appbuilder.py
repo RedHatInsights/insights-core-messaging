@@ -139,6 +139,7 @@ class AppBuilder:
             handler.setFormatter(LogstashFormatterV1()) # to keep the same format with cloud env
             logging.basicConfig(level=logging.DEBUG)
             logging.getLogger("insights.core.dr").setLevel(logging.ERROR)
+            # remove the default handler and just use the system stream handler for local environment
             logging.root.removeHandler(logging.root.handlers[0])
             logging.root.addHandler(handler)
 
