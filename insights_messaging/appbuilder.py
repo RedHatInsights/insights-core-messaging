@@ -1,12 +1,14 @@
 import logging
 import logging.config
+from logstash_formatter import LogstashFormatterV1
 import os
-
+import sys
 import yaml
 
 from insights import apply_configs, apply_default_enabled, dr
 
 from .consumers.cli import Interactive
+from .consumers import ArchiveContextIdsInjectingFilter
 from .downloaders.localfs import LocalFS
 from .engine import Engine
 from .publishers.cli import StdOut
@@ -133,8 +135,18 @@ class AppBuilder:
         if log_config:
             logging.config.dictConfig(log_config)
         else:
+            handler = logging.StreamHandler(stream=sys.stdout)
+            handler.setFormatter(LogstashFormatterV1()) # to keep the same format with cloud env
             logging.basicConfig(level=logging.DEBUG)
+            logging.getLogger("insights.core.dr").setLevel(logging.ERROR)
+            # remove the default handler and just use the system stream handler for local environment
+            logging.root.removeHandler(logging.root.handlers[0])
+            logging.root.addHandler(handler)
 
+        # add filter for handlers in root logger
+        payload_inject_filter = ArchiveContextIdsInjectingFilter()
+        for i_handler in logging.root.handlers:
+            i_handler.addFilter(payload_inject_filter)
         self._load_plugins()
         apply_default_enabled(self.plugins)
         apply_configs(self.plugins)
