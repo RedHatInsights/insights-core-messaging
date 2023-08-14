@@ -9,8 +9,10 @@ log = logging.getLogger(__name__)
 def update_archive_context_ids(payload):
     if payload and "platform_metadata" in payload and 'host' in payload:
         payload_id_dict = {}
-        payload_id_dict['request_id'] = payload["platform_metadata"].get("request_id")
-        payload_id_dict['inventory_id'] = payload["host"].get("id")
+        if 'request_id' in payload["platform_metadata"]:
+            payload_id_dict['request_id'] = payload["platform_metadata"].get("request_id")
+        if 'id' in payload["host"]:
+            payload_id_dict['inventory_id'] = payload["host"].get("id")
         archive_context_var.set(payload_id_dict)
 
 class Kafka(Consumer):
