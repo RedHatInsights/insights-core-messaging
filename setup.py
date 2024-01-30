@@ -15,7 +15,8 @@ runtime = set([
     "requests",
     "s3fs",
     "retry",
-    "logstash_formatter"
+    "logstash_formatter",
+    "prometheus_client"
 ])
 
 kafka = set([
