@@ -80,6 +80,7 @@ class Kafka(Consumer):
         group_id,
         bootstrap_servers,
         requeuer=None,
+        metric_interval=10000,  # Gather metrics every 10 secs by default
         **kwargs
     ):
 
@@ -90,7 +91,7 @@ class Kafka(Consumer):
         config["bootstrap.servers"] = ",".join(bootstrap_servers)
         config["group.instance.id"] = kwargs.get("group.instance.id", os.environ.get("HOSTNAME"))
         config["stats_cb"] = self.metrics_collector.stats_to_metrics
-        config["statistics.interval.ms"] = 10000 # Gather metrics every 10 secs
+        config["statistics.interval.ms"] = metric_interval
 
         self.auto_commit = kwargs.get("enable.auto.commit", True)
         self.consumer = ConfluentConsumer(config)
