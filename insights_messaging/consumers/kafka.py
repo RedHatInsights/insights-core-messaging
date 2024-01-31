@@ -50,24 +50,24 @@ class KafkaMetrics():
     def stats_to_metrics(self, stats_json: str) -> None:
         stats = json.loads(stats_json)
 
-        stat_type = self.stats.get('type')
-        client_id = self.stats.get('client_id')
+        stat_type = stats.get('type')
+        client_id = stats.get('client_id')
 
         self.KAFKA_CONSUMER_REPLY_QUEUE_SIZE.labels(
             type=stat_type,
             client_id=client_id
-        ).set(self.stats.get('replyq'))
+        ).set(stats.get('replyq'))
 
         self.KAFKA_CONSUMER_REBALANCE_COUNT.labels(
             type=stat_type,
             client_id=client_id,
-            state=self.stats.get('cgrp').get('state')
-        ).set(self.stats.get('cgrp').get('rebalance_cnt'))
+            state=stats.get('cgrp').get('state')
+        ).set(stats.get('cgrp').get('rebalance_cnt'))
 
         self.KAFKA_CONSUMER_REBALANCE_AGE.labels(
             type=stat_type,
             client_id=client_id
-        ).set(self.stats.get('cgrp').get('rebalance_age'))
+        ).set(stats.get('cgrp').get('rebalance_age'))
 
 
 class Kafka(Consumer):
