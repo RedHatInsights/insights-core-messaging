@@ -1,8 +1,8 @@
 import logging
 import pika
-from time import time
 
 from . import Consumer, Requeue
+from utils import retry
 
 log = logging.getLogger(__name__)
 
@@ -59,19 +59,13 @@ class RabbitMQ(Consumer):
     def get_url(self, input_msg):
         raise NotImplementedError()
 
+    @retry
     def run(self):
-        sleep_time = 1
-        while True:
-            try:
-                self.open()
-                self.channel.start_consuming()
-            except KeyboardInterrupt:
-                self.channel.stop_consuming()
-                self.connection.close()
-            except (pika.exceptions.AMQPConnectionError, pika.exceptions.ChannelClosed) as e:
-                if sleep_time < 3:
-                    sleep_time += 1
-                print(f'Caught exception {e}. Trying again in {sleep_time} seconds.')
-                time.sleep(sleep_time)
-            except pika.exceptions.ConnectionClosedByBroker:
-                break
+        try:
+            self.open()
+            self.channel.start_consuming()
+        except KeyboardInterrupt:
+            self.channel.stop_consuming()
+            self.connection.close()
+        except pika.exceptions.ConnectionClosedByBroker:
+            pass
