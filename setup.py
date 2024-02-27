@@ -14,7 +14,6 @@ runtime = set([
     "app-common-python",
     "requests",
     "s3fs",
-    "retry",
     "logstash_formatter"
 ])
 

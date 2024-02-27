@@ -1,7 +1,8 @@
 import logging
 import pika
-from retry import retry
+
 from . import Consumer, Requeue
+from utils import retry
 
 log = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class RabbitMQ(Consumer):
     def get_url(self, input_msg):
         raise NotImplementedError()
 
-    @retry(pika.exceptions.AMQPConnectionError, delay=1, jitter=(1, 3))
+    @retry
     def run(self):
         try:
             self.open()
