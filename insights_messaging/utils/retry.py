@@ -5,6 +5,7 @@ from time import sleep
 
 log = logging.getLogger(__name__)
 
+
 class RetryDecorator:
     def __init__(self, func: Callable[[Any], None]):
         self._func = func
