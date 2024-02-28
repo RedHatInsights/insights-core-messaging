@@ -14,7 +14,8 @@ runtime = set([
     "app-common-python",
     "requests",
     "s3fs",
-    "logstash_formatter"
+    "logstash_formatter",
+    "prometheus_client"
 ])
 
 kafka = set([
