@@ -1,7 +1,7 @@
 import logging
 import pika
-from retry import retry
 from . import Requeuer
+from utils import retry
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class RabbitMQ(Requeuer):
             body=msg,
         )
 
-    @retry(pika.exceptions.AMQPConnectionError, delay=1, jitter=(1, 3))
+    @retry
     def requeue(self, msg):
         try:
             self.send(msg)

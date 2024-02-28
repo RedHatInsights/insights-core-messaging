@@ -1,7 +1,8 @@
 import logging
 import pika
-from retry import retry
+
 from . import Publisher
+from utils import retry
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class RabbitMQ(Publisher):
             body=msg,
         )
 
-    @retry(pika.exceptions.AMQPConnectionError, delay=1, jitter=(1, 3))
+    @retry
     def publish(self, input_msg, response):
         try:
             self.send(response)
