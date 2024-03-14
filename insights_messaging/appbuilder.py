@@ -88,13 +88,23 @@ class AppBuilder:
                     graph.update(dr.get_dependency_graph(c))
         return graph
 
-    def _resolve_engine_config(self, config):
-        return {
+    def _resolve_engine_config(self, config, include_config=False):
+        mandatory_config = {
             "formatter": dr.get_component(config.get("format")),
             "target_components": self._get_graphs(config.get("target_components", [])),
             "extract_timeout": config.get("extract_timeout"),
             "extract_tmp_dir": config.get("extract_tmp_dir"),
         }
+
+        if not include_config:
+            return mandatory_config
+
+        for mandatory_key in mandatory_config.keys():
+            if mandatory_key in config:
+                del config[mandatory_key]
+
+        mandatory_config.update(config)
+        return mandatory_config
 
     def _get_engine(self):
         engine_config = self._resolve_engine_config(self.service)
@@ -104,7 +114,7 @@ class AppBuilder:
 
         spec = self.service["engine"]
         kwargs = spec.get("kwargs", {})
-        engine_config.update(self._resolve_engine_config(kwargs))
+        engine_config.update(self._resolve_engine_config(kwargs, include_config=True))
 
         EngineCls = dr.get_component(spec["name"])
         if EngineCls is None:
