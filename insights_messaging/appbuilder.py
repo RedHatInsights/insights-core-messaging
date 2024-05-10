@@ -88,33 +88,42 @@ class AppBuilder:
                     graph.update(dr.get_dependency_graph(c))
         return graph
 
-    def _resolve_engine_config(self, config, include_config=False):
-        mandatory_config = {
-            "formatter": dr.get_component(config.get("format")),
-            "target_components": self._get_graphs(config.get("target_components", [])),
-            "extract_timeout": config.get("extract_timeout"),
-            "extract_tmp_dir": config.get("extract_tmp_dir"),
+    def _get_default_engine_config(self):
+        """Return the default configuration for an `Engine`, based on configured service."""
+        return {
+            "formatter": dr.get_component(self.service.get("format")),
+            "target_components": self._get_graphs(self.service.get("target_components", [])),
+            "extract_timeout": self.service.get("extract_timeout"),
+            "extract_tmp_dir": self.service.get("extract_tmp_dir"),
         }
 
-        if not include_config:
-            return mandatory_config
+    def _resolve_engine_config(self, config):
+        """Generate a configuration based on specific args and default values for the service."""
+        default_engine_config = self._get_default_engine_config()
 
-        for mandatory_key in mandatory_config.keys():
-            if mandatory_key in config:
-                del config[mandatory_key]
-
-        mandatory_config.update(config)
-        return mandatory_config
+        if "formatter" in config:
+            config["formatter"] = dr.get_component(config["formatter"])
+        
+        if "target_components" in config:
+            config["target_components"] = self._get_graphs(config["target_components"])
+        
+        # not using update to avoid overwriting defined values
+        for key, value in default_engine_config.items():
+            if key not in config:
+                config[key] = value
+        
+        return config
 
     def _get_engine(self):
-        engine_config = self._resolve_engine_config(self.service)
+        """Get the configured `Engine` object already instantiated."""
+        engine_config = self._get_default_engine_config()
 
         if "engine" not in self.service:
             return Engine(**engine_config)
 
         spec = self.service["engine"]
         kwargs = spec.get("kwargs", {})
-        engine_config.update(self._resolve_engine_config(kwargs, include_config=True))
+        engine_config = self._resolve_engine_config(kwargs)
 
         EngineCls = dr.get_component(spec["name"])
         if EngineCls is None:
