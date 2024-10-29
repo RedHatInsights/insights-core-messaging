@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 
 from confluent_kafka import Consumer as ConfluentConsumer
 from insights_messaging.consumers import Consumer, Requeue, archive_context_var
@@ -117,7 +118,8 @@ class Kafka(Consumer):
                 if not self.auto_commit:
                     self.consumer.commit(msg)
                 log.exception(err)
-                continue
+                log.exception("Insights engine will exit as kafka error and openshift will recreate it!")
+                sys.exit(-5)
 
             val = msg.value()
             if val is not None:
