@@ -125,10 +125,10 @@ class Kafka(Consumer):
             if val is not None:
                 try:
                     payload = self.deserialize(val)
-                    # set the context var according payload info
-                    update_archive_context_ids(payload)
                     if self.handles(payload):
                         log.info("Start to process one payload")
+                        # set the context var according payload info
+                        update_archive_context_ids(payload)
                         self.process(payload)
                         log.info("Completed one payload")
                 except Requeue as req:
