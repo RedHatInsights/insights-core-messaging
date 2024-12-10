@@ -1,5 +1,6 @@
 import logging
 from io import StringIO
+from pathlib import Path
 
 from insights.core import dr
 from insights.core.archives import extract
@@ -16,6 +17,7 @@ class Engine(Watched):
         formatter,
         target_components=None,
         extract_timeout=None,
+        unpacked_archive_size_limit=None,
         extract_tmp_dir=None,
     ):
         super().__init__()
@@ -23,7 +25,19 @@ class Engine(Watched):
         self.components_dict = dr.determine_components(target_components or dr.COMPONENTS[dr.GROUPS.single])
         self.target_components = dr.toposort_flatten(self.components_dict, sort=False)
         self.extract_timeout = extract_timeout
+        # if there is no limit setting in config.yaml, set default limit to 4G
+        self.unpacked_archive_size_limit = unpacked_archive_size_limit if unpacked_archive_size_limit else 4000000000
         self.extract_tmp_dir = extract_tmp_dir
+
+    def validate_size(self, i_path):
+        """
+        reject payloads where the extracted size exceeds the configured max
+        """
+        total_size = sum(p.stat().st_size for p in Path(i_path).rglob('*'))
+        if total_size >= self.unpacked_archive_size_limit:
+            log.warning("Unpacked archive exceeds extracted file size limit of {}".format(self.unpacked_archive_size_limit))
+            return False
+        return True
 
     def process(self, broker, path):
         for w in self.watchers:
@@ -37,19 +51,23 @@ class Engine(Watched):
             with extract(
                 path, timeout=self.extract_timeout, extract_dir=self.extract_tmp_dir
             ) as extraction:
-                ctx, broker = initialize_broker(extraction.tmp_dir, broker=broker)
+                if self.validate_size(extraction.tmp_dir):
+                    ctx, broker = initialize_broker(extraction.tmp_dir, broker=broker)
 
-                self.fire("on_extract", ctx, broker, extraction)
+                    self.fire("on_extract", ctx, broker, extraction)
 
-                output = StringIO()
-                with self.Formatter(broker, stream=output):
-                    dr.run_components(self.target_components, self.components_dict, broker=broker)
-                output.seek(0)
-                result = output.read()
-                self.fire("on_engine_success", broker, result)
-                return result
+                    output = StringIO()
+                    with self.Formatter(broker, stream=output):
+                        dr.run_components(self.target_components, self.components_dict, broker=broker)
+                    output.seek(0)
+                    result = output.read()
+                    self.fire("on_engine_success", broker, result)
+                    return result
+                else:
+                    raise Exception(
+                        "Unpacked archive exceeds the size limit {}".format(self.unpacked_archive_size_limit))
         except Exception as ex:
             self.fire("on_engine_failure", broker, ex)
-            raise
+            raise ex
         finally:
             self.fire("on_engine_complete", broker)
