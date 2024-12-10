@@ -94,6 +94,7 @@ class AppBuilder:
             "formatter": dr.get_component(self.service.get("format")),
             "target_components": self._get_graphs(self.service.get("target_components", [])),
             "extract_timeout": self.service.get("extract_timeout"),
+            "unpacked_archive_size_limit": self.service.get("unpacked_archive_size_limit"),
             "extract_tmp_dir": self.service.get("extract_tmp_dir"),
         }
 
@@ -103,15 +104,15 @@ class AppBuilder:
 
         if "formatter" in config:
             config["formatter"] = dr.get_component(config["formatter"])
-        
+
         if "target_components" in config:
             config["target_components"] = self._get_graphs(config["target_components"])
-        
+
         # not using update to avoid overwriting defined values
         for key, value in default_engine_config.items():
             if key not in config:
                 config[key] = value
-        
+
         return config
 
     def _get_engine(self):
@@ -155,7 +156,7 @@ class AppBuilder:
             logging.config.dictConfig(log_config)
         else:
             handler = logging.StreamHandler(stream=sys.stdout)
-            handler.setFormatter(LogstashFormatterV1()) # to keep the same format with cloud env
+            handler.setFormatter(LogstashFormatterV1())  # to keep the same format with cloud env
             logging.basicConfig(level=logging.DEBUG)
             logging.getLogger("insights.core.dr").setLevel(logging.ERROR)
             # remove the default handler and just use the system stream handler for local environment
