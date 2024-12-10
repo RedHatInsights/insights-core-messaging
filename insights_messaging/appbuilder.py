@@ -94,6 +94,7 @@ class AppBuilder:
             "formatter": dr.get_component(self.service.get("format")),
             "target_components": self._get_graphs(self.service.get("target_components", [])),
             "extract_timeout": self.service.get("extract_timeout"),
+            "unpacked_archive_size_limit": self.service.get("unpacked_archive_size_limit"),
             "extract_tmp_dir": self.service.get("extract_tmp_dir"),
         }
 
