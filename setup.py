@@ -29,7 +29,7 @@ rabbitmq = set([
 if __name__ == "__main__":
     setup(
         name="insights-core-messaging",
-        version="1.2.11",
+        version="1.2.15",
         description="Messaging service around insights-core.",
         long_description=open("README.md").read(),
         long_description_content_type='text/markdown',
