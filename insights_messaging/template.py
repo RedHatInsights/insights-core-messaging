@@ -7,7 +7,7 @@ def _infer_type(v):
         return
 
     if v.lower() in ["true", "false"]:
-        return bool(v)
+        return v.lower() == "true"
 
     for conv in [int, float]:
         try:
