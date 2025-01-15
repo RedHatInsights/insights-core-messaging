@@ -119,7 +119,8 @@ class Kafka(Consumer):
                     self.consumer.commit(msg)
                 log.exception(err)
                 log.exception("Insights engine will exit as kafka error and openshift will recreate it!")
-                sys.exit(-5)
+                logging.shutdown()
+                os._exit(os.EX_SOFTWARE)
 
             val = msg.value()
             if val is not None:
