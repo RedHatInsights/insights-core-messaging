@@ -34,7 +34,7 @@ class Engine(Watched):
         reject payloads where the extracted size exceeds the configured max
         """
         if self.unpacked_archive_size_limit < 0:
-            log.info("There is no size limitation for the unpacked archive")
+            log.debug("There is no size limitation for the unpacked archive")
             return True
         total_size = sum(p.stat().st_size for p in Path(i_path).rglob('*'))
         if total_size >= self.unpacked_archive_size_limit:
