@@ -48,7 +48,12 @@ class AppBuilder:
             dr.load_components(p, continue_on_error=False)
 
     def _load_plugins(self):
-        self._load_packages(self.plugins.get("packages", []))
+        configure_packages = self.plugins.get("packages", [])
+        # read extra package https://issues.redhat.com/browse/RHINENG-19348
+        extra_package_string = os.environ.get("EXTRA_PACKAGES", "")
+        if extra_package_string:
+            configure_packages.extend(extra_package_string.split(","))
+        self._load_packages(configure_packages)
 
     def _load(self, spec):
         comp = dr.get_component(spec["name"])
