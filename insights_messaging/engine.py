@@ -17,7 +17,7 @@ class Engine(Watched):
         formatter,
         target_components=None,
         extract_timeout=None,
-        unpacked_archive_size_limit=None,
+        unpacked_archive_size_limit=-1,
         extract_tmp_dir=None,
     ):
         super().__init__()
@@ -26,13 +26,16 @@ class Engine(Watched):
         self.target_components = dr.toposort_flatten(self.components_dict, sort=False)
         self.extract_timeout = extract_timeout
         # if there is no limit setting in config.yaml, set default limit to 4G
-        self.unpacked_archive_size_limit = unpacked_archive_size_limit if unpacked_archive_size_limit else 4000000000
+        self.unpacked_archive_size_limit = unpacked_archive_size_limit
         self.extract_tmp_dir = extract_tmp_dir
 
     def validate_size(self, i_path):
         """
         reject payloads where the extracted size exceeds the configured max
         """
+        if self.unpacked_archive_size_limit < 0:
+            log.debug("There is no size limitation for the unpacked archive")
+            return True
         total_size = sum(p.stat().st_size for p in Path(i_path).rglob('*'))
         if total_size >= self.unpacked_archive_size_limit:
             log.warning("Unpacked archive exceeds extracted file size limit of {}".format(self.unpacked_archive_size_limit))

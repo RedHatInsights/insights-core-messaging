@@ -1,6 +1,6 @@
 Construct an insights archive processing application by providing a
 configuration file that specifies its components. The building blocks
-are described below.
+are described below. Pypi location: https://pypi.org/project/insights-core-messaging
 
 Engine
 ------

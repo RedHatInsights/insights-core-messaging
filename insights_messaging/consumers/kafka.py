@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import signal
 import sys
 
 from confluent_kafka import Consumer as ConfluentConsumer
@@ -8,6 +9,13 @@ from insights_messaging.consumers import Consumer, Requeue, archive_context_var
 from prometheus_client import Gauge
 
 log = logging.getLogger(__name__)
+
+running = True
+def handle_signal(signal, frame):
+    global running
+    running = False
+
+signal.signal(signal.SIGTERM, handle_signal)
 
 def update_archive_context_ids(payload):
     if payload and "platform_metadata" in payload and 'host' in payload:
@@ -108,7 +116,7 @@ class Kafka(Consumer):
         return True
 
     def run(self):
-        while True:
+        while running:
             msg = self.consumer.poll(1)
             if msg is None:
                 continue
@@ -119,7 +127,8 @@ class Kafka(Consumer):
                     self.consumer.commit(msg)
                 log.exception(err)
                 log.exception("Insights engine will exit as kafka error and openshift will recreate it!")
-                sys.exit(-5)
+                logging.shutdown()
+                os._exit(os.EX_SOFTWARE)
 
             val = msg.value()
             if val is not None:
