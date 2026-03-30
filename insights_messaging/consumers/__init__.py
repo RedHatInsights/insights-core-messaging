@@ -34,6 +34,7 @@ class Consumer(Watched):
         raise NotImplementedError()
 
     def process(self, input_msg):
+        broker = None
         try:
             self.fire("on_recv", input_msg)
             url = self.get_url(input_msg)
@@ -52,6 +53,39 @@ class Consumer(Watched):
             raise
         finally:
             self.fire("on_consumer_complete", input_msg)
+            # CCXDEV-15098: Break circular references to prevent memory leak.
+            #
+            # When a component raises during dr.run(), Python attaches the
+            # traceback to the exception via ex.__traceback__. That traceback
+            # holds a reference to the stack frame, which references local
+            # variables — including the broker itself. This creates a circular
+            # reference chain:
+            #
+            #   Broker -> exceptions dict -> exception -> __traceback__
+            #          -> frame -> local vars -> Broker
+            #
+            # Because the broker's dicts keep these objects reachable, CPython's
+            # reference-counting GC cannot free them. The cyclic GC can
+            # eventually collect them, but in practice the broker and all its
+            # data (instances dict with ~500 component results) stay alive far
+            # longer than needed, causing steady memory growth (~8 MB/hr in
+            # production for rules-processing).
+            #
+            # The fix:
+            # 1. Clear ex.__traceback__ on every stored exception to sever the
+            #    frame reference. The formatted traceback string is already
+            #    saved in broker.tracebacks before this point, so no debugging
+            #    information is lost.
+            # 2. Clear the broker's large dicts (exceptions, tracebacks,
+            #    instances) so the broker object becomes lightweight and can be
+            #    collected promptly by reference counting.
+            if broker is not None:
+                for ex_list in broker.exceptions.values():
+                    for ex in ex_list:
+                        ex.__traceback__ = None
+                broker.exceptions.clear()
+                broker.tracebacks.clear()
+                broker.instances.clear()
 
     def get_url(self, input_msg):
         raise NotImplementedError()
