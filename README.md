@@ -2,6 +2,122 @@ Construct an insights archive processing application by providing a
 configuration file that specifies its components. The building blocks
 are described below. Pypi location: https://pypi.org/project/insights-core-messaging
 
+Testing
+-------
+
+### Test Framework
+
+The project uses [pytest](https://docs.pytest.org/) as its test
+framework.  Tests are located in `insights_messaging/tests/` and
+follow standard pytest discovery conventions (files named
+`test_*.py`, functions named `test_*`).
+
+### Running Tests
+
+Install the project with test dependencies and run pytest:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -e .[testing]
+pytest
+```
+
+Run with coverage reporting:
+```bash
+pytest --cov=insights_messaging --cov-branch --cov-report=term-missing
+```
+
+Run a specific test file:
+```bash
+pytest insights_messaging/tests/test_consumer_base.py -v
+```
+
+Generate an HTML coverage report:
+```bash
+pytest --cov=insights_messaging --cov-branch --cov-report=html
+open htmlcov/index.html
+```
+
+### Linting
+
+The project uses [ruff](https://docs.astral.sh/ruff/) as its primary
+linter and [flake8](https://flake8.pycqa.org/) for legacy checks.
+Configuration for flake8 is in the `.flake8` file at the project root.
+```bash
+pip install -e .[linting]
+ruff check .
+flake8 .
+```
+
+### Security Scanning
+
+The project uses [Bandit](https://bandit.readthedocs.io/) for
+security scanning via the `PyCQA/bandit-action` GitHub Action.
+Bandit checks for common security issues in Python code.
+
+### Test Organization
+
+Tests are organized by the module or feature they validate:
+
+- `test_consumer_base.py` — Consumer.process() lifecycle, watcher events, error handling.
+- `test_defaulting_template.py` — Template substitution with defaults.
+- `test_downloaders.py` — Downloader implementations (LocalFS).
+- `test_get_logging_config.py` — Logging configuration loading.
+- `test_kafka_consumer.py` — Kafka metrics, context IDs, logging filter.
+- `test_pluggable_engine.py` — Engine loading from configuration.
+- `test_publishers.py` — Publisher implementations (base, StdOut).
+- `test_resolve_variables.py` — Environment variable resolution in
+  configuration.
+- `test_watchers.py` — Watcher system (event dispatch, error isolation).
+
+### Writing Tests
+
+Follow these conventions when adding new tests:
+
+1. **File naming**: `test_<module_or_feature>.py`
+2. **Function naming**: `test_<what_is_being_tested>`
+3. **Module docstrings**: Every test file should have a module-level
+   docstring explaining what it covers.
+4. **Assertion messages**: Include descriptive messages in assertions to
+   make failures self-explanatory:
+   ```python
+   assert len(broker.exceptions) == 0, (
+       "broker.exceptions should be empty after process() cleanup, "
+       "found %d entries" % len(broker.exceptions)
+   )
+   ```
+5. **Mock objects**: Embed mock classes directly in the test file rather
+   than using a shared fixtures module.  This keeps tests self-contained
+   and easy to understand.
+6. **CPython-specific tests**: Use `pytest.mark.skipif` for tests that
+   rely on CPython internals (e.g., reference counting semantics):
+   ```python
+   @pytest.mark.skipif(
+       platform.python_implementation() != "CPython",
+       reason="Relies on CPython reference-counting semantics"
+   )
+   def test_broker_collected_after_process():
+       ...
+   ```
+
+### Continuous Integration
+
+The project uses GitHub Actions for CI with separate workflow files
+per concern (following the
+[lightspeed-stack](https://github.com/lightspeed-core/lightspeed-stack)
+pattern).  Workflows are defined in `.github/workflows/` and run on
+every push and pull request.
+
+The CI pipeline includes:
+
+- **unit_tests.yaml**: Runs pytest with coverage across Python 3.11
+  and 3.12.
+- **ruff.yaml**: Runs the Ruff linter for fast Python code quality
+  checks.
+- **bandit.yaml**: Runs Bandit security scanner to detect common
+  vulnerabilities.
+
 Engine
 ------
 An engine encapsulates the process of evaluating an archive with insights. It
