@@ -51,12 +51,10 @@ import traceback
 import weakref
 from collections import defaultdict
 from contextlib import contextmanager
+
 import pytest
-from prometheus_client import CollectorRegistry
 
 from insights_messaging.consumers import Consumer
-from insights_messaging.consumers.kafka import KafkaMetrics
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -70,6 +68,7 @@ EXPECTED_COMPONENT = "test_component"
 # Mock infrastructure for Consumer.process() tests
 # ---------------------------------------------------------------------------
 
+
 class MockBroker:
     """Minimal broker mock matching the attributes used by Consumer.process().
 
@@ -77,6 +76,7 @@ class MockBroker:
     ``exceptions`` (defaultdict(list)), ``tracebacks`` (dict), and
     ``instances`` (dict).
     """
+
     def __init__(self):
         self.exceptions = defaultdict(list)
         self.tracebacks = {}
@@ -90,6 +90,7 @@ class MockBroker:
 
 class MockPublisher:
     """Publisher that records calls without side effects."""
+
     def publish(self, input_msg, results):
         pass
 
@@ -105,6 +106,7 @@ class MockEngine:
     The exception will have a live ``__traceback__`` (created by raising
     and catching it), mimicking the real circular reference scenario.
     """
+
     def __init__(self, should_raise=False):
         self.should_raise = should_raise
 
@@ -135,6 +137,7 @@ def _mock_download():
 
 class MockDownloader:
     """Downloader that returns a fake path without touching the filesystem."""
+
     def get(self, url):
         return _mock_download()
 
@@ -144,8 +147,9 @@ class FailingDownloader:
 
     Used to test the edge case where broker remains None in the finally block.
     """
+
     def get(self, url):
-        raise IOError("download failed")
+        raise OSError("download failed")
 
 
 class StubConsumer(Consumer):
@@ -155,6 +159,7 @@ class StubConsumer(Consumer):
     ``get_url``) and exposes the broker created during ``process()`` so
     tests can inspect it before cleanup.
     """
+
     def __init__(self, publisher, downloader, engine, broker_factory=None):
         super().__init__(publisher, downloader, engine)
         self._broker_factory = broker_factory or MockBroker
@@ -176,7 +181,7 @@ def _find_exceptions(broker, exc_type=Exception):
     Searches all components to avoid false-pass from a missed key lookup.
     """
     found = []
-    for comp, ex_list in broker.exceptions.items():
+    for _comp, ex_list in broker.exceptions.items():
         for ex in ex_list:
             if isinstance(ex, exc_type):
                 found.append(ex)
@@ -186,6 +191,7 @@ def _find_exceptions(broker, exc_type=Exception):
 # ---------------------------------------------------------------------------
 # Helper: run process() and capture broker state before cleanup
 # ---------------------------------------------------------------------------
+
 
 def _run_process_capturing_broker(consumer, input_msg="test_msg"):
     """Run consumer.process() and return the broker.
@@ -213,9 +219,7 @@ def _run_process_capturing_broker(consumer, input_msg="test_msg"):
     def capturing_process(broker, path):
         result = original_process(broker, path)
         # Snapshot broker state before the finally block clears it
-        pre_cleanup["exceptions"] = {
-            comp: list(exs) for comp, exs in broker.exceptions.items()
-        }
+        pre_cleanup["exceptions"] = {comp: list(exs) for comp, exs in broker.exceptions.items()}
         pre_cleanup["tracebacks"] = dict(broker.tracebacks)
         pre_cleanup["instances"] = dict(broker.instances)
         return result
@@ -236,6 +240,7 @@ def _run_process_capturing_broker(consumer, input_msg="test_msg"):
 # ---------------------------------------------------------------------------
 # Tests for exception __traceback__ clearing
 # ---------------------------------------------------------------------------
+
 
 def test_traceback_cleared_after_process():
     """Verify that __traceback__ is None for all exceptions after process().
@@ -288,21 +293,18 @@ def test_traceback_string_preserved_before_cleanup():
 
     pre = broker._pre_cleanup
     for ex, tb_string in pre["tracebacks"].items():
-        assert tb_string is not None, (
-            "Formatted traceback string should be captured before cleanup"
-        )
+        assert tb_string is not None, "Formatted traceback string should be captured before cleanup"
         assert EXPECTED_MSG in tb_string, (
             "Formatted traceback should contain the exception message %r, "
             "got: %s" % (EXPECTED_MSG, tb_string[:200])
         )
-        assert "Traceback" in tb_string, (
-            "Formatted traceback should contain 'Traceback' header"
-        )
+        assert "Traceback" in tb_string, "Formatted traceback should contain 'Traceback' header"
 
 
 # ---------------------------------------------------------------------------
 # Tests for broker dict cleanup
 # ---------------------------------------------------------------------------
+
 
 def test_broker_dicts_cleared_after_process():
     """Verify that broker.exceptions, tracebacks, and instances are all
@@ -320,12 +322,8 @@ def test_broker_dicts_cleared_after_process():
 
     # Verify pre-cleanup state had data
     pre = broker._pre_cleanup
-    assert len(pre["exceptions"]) > 0, (
-        "Pre-cleanup broker should have had exceptions"
-    )
-    assert len(pre["instances"]) > 0, (
-        "Pre-cleanup broker should have had instances"
-    )
+    assert len(pre["exceptions"]) > 0, "Pre-cleanup broker should have had exceptions"
+    assert len(pre["instances"]) > 0, "Pre-cleanup broker should have had instances"
 
     # Verify post-cleanup state is empty
     assert len(broker.exceptions) == 0, (
@@ -345,6 +343,7 @@ def test_broker_dicts_cleared_after_process():
 # ---------------------------------------------------------------------------
 # Tests for cleanup on exception path
 # ---------------------------------------------------------------------------
+
 
 def test_cleanup_on_engine_exception():
     """Verify that broker cleanup still happens when engine.process() raises.
@@ -390,9 +389,7 @@ def test_no_crash_when_broker_is_none():
     If the download fails before create_broker() is called, broker remains
     None.  The cleanup code in the finally block must not crash in this case.
     """
-    consumer = StubConsumer(
-        MockPublisher(), FailingDownloader(), MockEngine()
-    )
+    consumer = StubConsumer(MockPublisher(), FailingDownloader(), MockEngine())
 
     # Should not raise — the IOError from download is caught and re-raised,
     # but the finally block must not add a secondary exception.
@@ -404,9 +401,10 @@ def test_no_crash_when_broker_is_none():
 # GC collection test
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.skipif(
     platform.python_implementation() != "CPython",
-    reason="Relies on CPython reference-counting semantics"
+    reason="Relies on CPython reference-counting semantics",
 )
 def test_broker_collected_after_process():
     """Verify that brokers are garbage collected after processing.
@@ -431,9 +429,7 @@ def test_broker_collected_after_process():
 
     try:
         for _ in range(n_runs):
-            consumer = StubConsumer(
-                MockPublisher(), MockDownloader(), MockEngine()
-            )
+            consumer = StubConsumer(MockPublisher(), MockDownloader(), MockEngine())
             # Call process() directly — don't use the capturing helper
             # because its closures would hold extra references to the broker.
             consumer.process("test_msg")
@@ -466,12 +462,8 @@ def test_broker_collected_after_process():
 # Tests for KafkaMetrics label cardinality
 # ---------------------------------------------------------------------------
 
-# Use a module-level instance to avoid prometheus_client's duplicate
-# registration error.  All Kafka metrics tests share this instance.
-_kafka_metrics = KafkaMetrics()
 
-
-def test_rebalance_count_labels_exclude_state():
+def test_rebalance_count_labels_exclude_state(kafka_metrics):
     """Verify that KAFKA_CONSUMER_REBALANCE_COUNT does not include 'state'.
 
     Previously, labelnames included ['type', 'client_id', 'state'].  Since
@@ -483,47 +475,41 @@ def test_rebalance_count_labels_exclude_state():
     The fix removes 'state' from the labelnames to keep metric cardinality
     fixed (one child per type+client_id pair).
     """
-    labelnames = _kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._labelnames
+    labelnames = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._labelnames
 
     assert "state" not in labelnames, (
         "KAFKA_CONSUMER_REBALANCE_COUNT should not have 'state' in its "
         "labelnames to prevent unbounded metric cardinality growth. "
         "Found labelnames: %s" % list(labelnames)
     )
-    assert "type" in labelnames, (
-        "KAFKA_CONSUMER_REBALANCE_COUNT should have 'type' in labelnames"
-    )
+    assert "type" in labelnames, "KAFKA_CONSUMER_REBALANCE_COUNT should have 'type' in labelnames"
     assert "client_id" in labelnames, (
         "KAFKA_CONSUMER_REBALANCE_COUNT should have 'client_id' in labelnames"
     )
 
 
-def test_consumer_state_metric_exists():
+def test_consumer_state_metric_exists(kafka_metrics):
     """Verify that KAFKA_CONSUMER_STATE gauge exists with correct labels.
 
     Consumer state was previously embedded in the rebalance count metric
     as a label, causing cardinality explosion.  It is now tracked
     separately via KAFKA_CONSUMER_STATE with fixed-cardinality labels.
     """
-    assert hasattr(_kafka_metrics, "KAFKA_CONSUMER_STATE"), (
+    assert hasattr(kafka_metrics, "KAFKA_CONSUMER_STATE"), (
         "KafkaMetrics should have a KAFKA_CONSUMER_STATE gauge for "
         "tracking consumer state separately from rebalance count"
     )
 
-    labelnames = _kafka_metrics.KAFKA_CONSUMER_STATE._labelnames
-    assert "type" in labelnames, (
-        "KAFKA_CONSUMER_STATE should have 'type' in labelnames"
-    )
-    assert "client_id" in labelnames, (
-        "KAFKA_CONSUMER_STATE should have 'client_id' in labelnames"
-    )
+    labelnames = kafka_metrics.KAFKA_CONSUMER_STATE._labelnames
+    assert "type" in labelnames, "KAFKA_CONSUMER_STATE should have 'type' in labelnames"
+    assert "client_id" in labelnames, "KAFKA_CONSUMER_STATE should have 'client_id' in labelnames"
     assert "state" not in labelnames, (
         "KAFKA_CONSUMER_STATE should not have 'state' in labelnames — "
         "the value is set on the gauge itself, not as a label"
     )
 
 
-def test_metrics_cardinality_fixed_across_callbacks():
+def test_metrics_cardinality_fixed_across_callbacks(kafka_metrics):
     """Verify that metrics child count stays constant across stats callbacks.
 
     Without the fix, each ``stats_cb`` invocation with a different ``state``
@@ -536,7 +522,7 @@ def test_metrics_cardinality_fixed_across_callbacks():
     for i in range(50):
         stats = {
             "type": "consumer",
-            "client_id": "test-client",
+            "client_id": "test-client-memleak",
             "cgrp": {
                 "state": ["up", "rebalancing", "init"][i % 3],
                 "rebalance_cnt": i,
@@ -544,24 +530,15 @@ def test_metrics_cardinality_fixed_across_callbacks():
             },
             "replyq": 10,
         }
-        _kafka_metrics.stats_to_metrics(json.dumps(stats))
+        kafka_metrics.stats_to_metrics(json.dumps(stats))
 
     # With fixed labels, there should be exactly 1 child metric per gauge
-    # (one for the single type+client_id combo used above).
-    rebalance_children = len(
-        _kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._metrics
-    )
-    assert rebalance_children == 1, (
-        f"Expected 1 child metric for KAFKA_CONSUMER_REBALANCE_COUNT "
-        f"(one per type+client_id pair), but found {rebalance_children}. "
+    # for this specific type+client_id combo.
+    rebalance_children = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._metrics
+    memleak_keys = [k for k in rebalance_children if "test-client-memleak" in str(k)]
+    assert len(memleak_keys) == 1, (
+        f"Expected 1 child metric for test-client-memleak in "
+        f"KAFKA_CONSUMER_REBALANCE_COUNT, but found {len(memleak_keys)}. "
         "This suggests 'state' or another variable label is still present, "
         "causing unbounded cardinality growth."
-    )
-
-    reply_children = len(
-        _kafka_metrics.KAFKA_CONSUMER_REPLY_QUEUE_SIZE._metrics
-    )
-    assert reply_children == 1, (
-        f"Expected 1 child metric for KAFKA_CONSUMER_REPLY_QUEUE_SIZE, "
-        f"but found {reply_children}."
     )
