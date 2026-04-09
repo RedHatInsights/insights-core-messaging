@@ -9,6 +9,7 @@ develop = set([
 ])
 
 testing = set([
+    'confluent-kafka',
     'coverage',
     'pytest',
     'pytest-cov',
