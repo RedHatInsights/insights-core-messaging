@@ -29,7 +29,7 @@ service:
     engine:
         name: insights_messaging.tests.test_pluggable_engine.CustomEngine
         kwargs:
-            format: insights_messaging.tests.test_pluggable_engine.MockFormat
+            formatter: insights_messaging.tests.test_pluggable_engine.MockFormat
             extract_timeout: 20
             extract_tmp_dir: ${TMP_DIR:/tmp}
             target_components: []
