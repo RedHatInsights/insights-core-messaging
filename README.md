@@ -21,6 +21,7 @@ pytest --cov=insights_messaging --cov-branch --cov-report=term-missing
 Run linting:
 ```bash
 pip install -e .[linting]
+ruff check .
 flake8 .
 ```
 
