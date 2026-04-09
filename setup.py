@@ -8,6 +8,16 @@ develop = set([
     'wheel',
 ])
 
+testing = set([
+    'coverage',
+    'pytest',
+    'pytest-cov',
+])
+
+linting = set([
+    'flake8',
+])
+
 runtime = set([
     "attrs",
     "insights-core",
@@ -40,6 +50,8 @@ if __name__ == "__main__":
         install_requires=list(runtime),
         extras_require={
             'develop': list(develop),
+            'testing': list(testing),
+            'linting': list(linting),
             'kafka': list(kafka),
             'rabbitmq': list(rabbitmq),
         },
