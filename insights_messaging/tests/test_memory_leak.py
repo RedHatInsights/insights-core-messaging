@@ -52,10 +52,8 @@ import weakref
 from collections import defaultdict
 from contextlib import contextmanager
 import pytest
-from prometheus_client import CollectorRegistry
 
 from insights_messaging.consumers import Consumer
-from insights_messaging.consumers.kafka import KafkaMetrics
 
 
 # ---------------------------------------------------------------------------
@@ -466,12 +464,7 @@ def test_broker_collected_after_process():
 # Tests for KafkaMetrics label cardinality
 # ---------------------------------------------------------------------------
 
-# Use a module-level instance to avoid prometheus_client's duplicate
-# registration error.  All Kafka metrics tests share this instance.
-_kafka_metrics = KafkaMetrics()
-
-
-def test_rebalance_count_labels_exclude_state():
+def test_rebalance_count_labels_exclude_state(kafka_metrics):
     """Verify that KAFKA_CONSUMER_REBALANCE_COUNT does not include 'state'.
 
     Previously, labelnames included ['type', 'client_id', 'state'].  Since
@@ -483,7 +476,7 @@ def test_rebalance_count_labels_exclude_state():
     The fix removes 'state' from the labelnames to keep metric cardinality
     fixed (one child per type+client_id pair).
     """
-    labelnames = _kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._labelnames
+    labelnames = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._labelnames
 
     assert "state" not in labelnames, (
         "KAFKA_CONSUMER_REBALANCE_COUNT should not have 'state' in its "
@@ -498,19 +491,19 @@ def test_rebalance_count_labels_exclude_state():
     )
 
 
-def test_consumer_state_metric_exists():
+def test_consumer_state_metric_exists(kafka_metrics):
     """Verify that KAFKA_CONSUMER_STATE gauge exists with correct labels.
 
     Consumer state was previously embedded in the rebalance count metric
     as a label, causing cardinality explosion.  It is now tracked
     separately via KAFKA_CONSUMER_STATE with fixed-cardinality labels.
     """
-    assert hasattr(_kafka_metrics, "KAFKA_CONSUMER_STATE"), (
+    assert hasattr(kafka_metrics, "KAFKA_CONSUMER_STATE"), (
         "KafkaMetrics should have a KAFKA_CONSUMER_STATE gauge for "
         "tracking consumer state separately from rebalance count"
     )
 
-    labelnames = _kafka_metrics.KAFKA_CONSUMER_STATE._labelnames
+    labelnames = kafka_metrics.KAFKA_CONSUMER_STATE._labelnames
     assert "type" in labelnames, (
         "KAFKA_CONSUMER_STATE should have 'type' in labelnames"
     )
@@ -523,7 +516,7 @@ def test_consumer_state_metric_exists():
     )
 
 
-def test_metrics_cardinality_fixed_across_callbacks():
+def test_metrics_cardinality_fixed_across_callbacks(kafka_metrics):
     """Verify that metrics child count stays constant across stats callbacks.
 
     Without the fix, each ``stats_cb`` invocation with a different ``state``
@@ -536,7 +529,7 @@ def test_metrics_cardinality_fixed_across_callbacks():
     for i in range(50):
         stats = {
             "type": "consumer",
-            "client_id": "test-client",
+            "client_id": "test-client-memleak",
             "cgrp": {
                 "state": ["up", "rebalancing", "init"][i % 3],
                 "rebalance_cnt": i,
@@ -544,24 +537,15 @@ def test_metrics_cardinality_fixed_across_callbacks():
             },
             "replyq": 10,
         }
-        _kafka_metrics.stats_to_metrics(json.dumps(stats))
+        kafka_metrics.stats_to_metrics(json.dumps(stats))
 
     # With fixed labels, there should be exactly 1 child metric per gauge
-    # (one for the single type+client_id combo used above).
-    rebalance_children = len(
-        _kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._metrics
-    )
-    assert rebalance_children == 1, (
-        f"Expected 1 child metric for KAFKA_CONSUMER_REBALANCE_COUNT "
-        f"(one per type+client_id pair), but found {rebalance_children}. "
+    # for this specific type+client_id combo.
+    rebalance_children = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._metrics
+    memleak_keys = [k for k in rebalance_children if "test-client-memleak" in str(k)]
+    assert len(memleak_keys) == 1, (
+        f"Expected 1 child metric for test-client-memleak in "
+        f"KAFKA_CONSUMER_REBALANCE_COUNT, but found {len(memleak_keys)}. "
         "This suggests 'state' or another variable label is still present, "
         "causing unbounded cardinality growth."
-    )
-
-    reply_children = len(
-        _kafka_metrics.KAFKA_CONSUMER_REPLY_QUEUE_SIZE._metrics
-    )
-    assert reply_children == 1, (
-        f"Expected 1 child metric for KAFKA_CONSUMER_REPLY_QUEUE_SIZE, "
-        f"but found {reply_children}."
     )

@@ -2,6 +2,30 @@ Construct an insights archive processing application by providing a
 configuration file that specifies its components. The building blocks
 are described below. Pypi location: https://pypi.org/project/insights-core-messaging
 
+Testing
+-------
+Install the project with test dependencies and run pytest:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -e .[testing]
+pytest
+```
+
+Run with coverage:
+```bash
+pytest --cov=insights_messaging --cov-branch --cov-report=term-missing
+```
+
+Run linting:
+```bash
+pip install -e .[linting]
+flake8 .
+```
+
+See [docs/testing.rst](docs/testing.rst) for full testing documentation.
+
 Engine
 ------
 An engine encapsulates the process of evaluating an archive with insights. It
