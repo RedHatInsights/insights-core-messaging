@@ -16,6 +16,7 @@ testing = set([
 
 linting = set([
     'flake8',
+    'ruff',
 ])
 
 runtime = set([
