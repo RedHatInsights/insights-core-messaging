@@ -14,29 +14,22 @@ follow standard pytest discovery conventions (files named
 
 ### Running Tests
 
-Install the project with test dependencies and run pytest:
+The project uses [tox](https://tox.wiki/) to run tests across Python
+3.11 and 3.12.  Install tox and run all environments:
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
+pip install tox
+tox -vv
+```
+
+Run a single Python version:
+```bash
+tox -e py311
+```
+
+Run pytest directly (useful during development):
+```bash
 pip install -e .[testing]
-pytest
-```
-
-Run with coverage reporting:
-```bash
-pytest --cov=insights_messaging --cov-branch --cov-report=term-missing
-```
-
-Run a specific test file:
-```bash
-pytest insights_messaging/tests/test_consumer_base.py -v
-```
-
-Generate an HTML coverage report:
-```bash
-pytest --cov=insights_messaging --cov-branch --cov-report=html
-open htmlcov/index.html
+pytest -v --cov=insights_messaging --cov-branch --cov-report=term-missing
 ```
 
 ### Linting

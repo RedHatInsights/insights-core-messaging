@@ -12,7 +12,6 @@ authors = [
 classifiers = [
     "Intended Audience :: Developers",
     "Natural Language :: English",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -22,7 +21,7 @@ classifiers = [
 requires-python = ">= 3.11"
 dependencies = [
     "attrs",
-    "insights-core",
+    "insights-core @ git+https://github.com/RedHatInsights/insights-core.git@master",
     "app-common-python",
     "requests",
     "s3fs",
@@ -30,11 +29,10 @@ dependencies = [
     "prometheus_client",
 ]
 
+license = "Apache-2.0"
+
 [tool.setuptools.packages.find]
 include = ["insights_messaging*"]
-
-[project.license]
-text = "Apache-2.0"
 
 [project.urls]
 Homepage = "https://github.com/RedHatInsights/insights-core-messaging"

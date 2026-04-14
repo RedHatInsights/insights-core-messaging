@@ -17,12 +17,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install -e .[testing]
-      - name: Run tests
-        run: pytest --cov=insights_messaging --cov-branch --cov-report=term-missing
+      - run: pip install --upgrade setuptools
+      - run: pip install --upgrade wheel
+      - run: pip install tox-gh>=1.2
+      - run: tox -vv
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         if: ${{ matrix.python-version == '3.11' }}

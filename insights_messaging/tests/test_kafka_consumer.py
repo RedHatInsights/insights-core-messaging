@@ -145,6 +145,7 @@ def test_stats_to_metrics_parses_json(kafka_metrics):
         "cgrp": {
             "rebalance_cnt": 42,
             "rebalance_age": 5000,
+            "state": "up",
         },
         "replyq": 7,
     }
@@ -153,7 +154,7 @@ def test_stats_to_metrics_parses_json(kafka_metrics):
 
     # Verify the rebalance count was set correctly
     sample = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT.labels(
-        type="consumer", client_id="test-client-1"
+        type="consumer", client_id="test-client-1", state="up"
     )._value.get()
     assert sample == 42, (
         "Rebalance count should be 42, got %s" % sample
@@ -168,6 +169,7 @@ def test_stats_to_metrics_sets_reply_queue(kafka_metrics):
         "cgrp": {
             "rebalance_cnt": 0,
             "rebalance_age": 0,
+            "state": "up",
         },
         "replyq": 15,
     }
@@ -190,6 +192,7 @@ def test_stats_to_metrics_sets_rebalance_age(kafka_metrics):
         "cgrp": {
             "rebalance_cnt": 1,
             "rebalance_age": 12345,
+            "state": "up",
         },
         "replyq": 0,
     }
