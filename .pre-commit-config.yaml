@@ -1,0 +1,45 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: mixed-line-ending
+      - id: check-ast
+      - id: check-merge-conflict
+      - id: check-added-large-files
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        # Exclude checks that are commonly problematic in organization scripts
+        # SC1090: Can't follow non-constant source (dynamic sourcing)
+        # SC2086: Double quote to prevent globbing (intentional word splitting)
+        # SC2034: Variable appears unused (used by sourced scripts)
+        # SC1091: Not following included files (dynamic includes)
+        args: ['--exclude=SC1090,SC2086,SC2034,SC1091']
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.10
+    hooks:
+      - id: ruff-check
+        args:
+          - '--fix'
+          - '--line-length=100'
+          - '--select=UP,F632,E,W,F,I,N,B,C4,SIM'
+      - id: ruff-format
+
+  # - repo: https://github.com/AleksaC/hadolint-py
+  #   rev: v2.14.0
+  #   hooks:
+  #     - id: hadolint
+
+  - repo: https://github.com/renovatebot/pre-commit-hooks
+    rev: 43.113.0
+    hooks:
+      - id: renovate-config-validator

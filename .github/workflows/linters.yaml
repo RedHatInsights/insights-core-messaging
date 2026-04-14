@@ -1,0 +1,10 @@
+name: Linters
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  lint:
+    uses: RedHatInsights/processing-tools/.github/workflows/linters.yaml@v0.1.0

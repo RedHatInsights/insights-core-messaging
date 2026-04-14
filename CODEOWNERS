@@ -1,0 +1,6 @@
+* @RedHatInsights/obsint-processing
+
+# Auto-merge codeowners
+pyproject.toml          @InsightsDroid @RedHatInsights/obsint-processing
+.pre-commit-config.yaml @InsightsDroid @RedHatInsights/obsint-processing
+.github/workflows/*     @InsightsDroid @RedHatInsights/obsint-processing

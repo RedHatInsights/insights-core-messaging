@@ -41,20 +41,14 @@ open htmlcov/index.html
 
 ### Linting
 
-The project uses [ruff](https://docs.astral.sh/ruff/) as its primary
-linter and [flake8](https://flake8.pycqa.org/) for legacy checks.
-Configuration for flake8 is in the `.flake8` file at the project root.
+The project uses [ruff](https://docs.astral.sh/ruff/) for linting and
+formatting via [pre-commit](https://pre-commit.com/).  Install the hooks
+locally:
 ```bash
-pip install -e .[linting]
-ruff check .
-flake8 .
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
 ```
-
-### Security Scanning
-
-The project uses [Bandit](https://bandit.readthedocs.io/) for
-security scanning via the `PyCQA/bandit-action` GitHub Action.
-Bandit checks for common security issues in Python code.
 
 ### Test Organization
 
@@ -103,20 +97,16 @@ Follow these conventions when adding new tests:
 
 ### Continuous Integration
 
-The project uses GitHub Actions for CI with separate workflow files
-per concern (following the
-[lightspeed-stack](https://github.com/lightspeed-core/lightspeed-stack)
-pattern).  Workflows are defined in `.github/workflows/` and run on
-every push and pull request.
+The project uses GitHub Actions for CI.  Workflows are defined in
+`.github/workflows/` and run on every push and pull request.
 
 The CI pipeline includes:
 
-- **unit_tests.yaml**: Runs pytest with coverage across Python 3.11
-  and 3.12.
-- **ruff.yaml**: Runs the Ruff linter for fast Python code quality
-  checks.
-- **bandit.yaml**: Runs Bandit security scanner to detect common
-  vulnerabilities.
+- **tests.yaml**: Runs pytest with coverage across Python 3.11
+  and 3.12, uploads coverage to Codecov.
+- **linters.yaml**: Reusable linter workflow from
+  [processing-tools](https://github.com/RedHatInsights/processing-tools).
+- **pypi-release.yaml**: Builds and publishes to PyPI on version tags.
 
 Engine
 ------

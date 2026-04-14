@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=70", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "insights-core-messaging"
+dynamic = ["version"]
+readme = "README.md"
+authors = [
+    {name="CCX Processing Team", email="ccx-core-processing-team@redhat.com"}
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+]
+
+requires-python = ">= 3.11"
+dependencies = [
+    "attrs",
+    "insights-core",
+    "app-common-python",
+    "requests",
+    "s3fs",
+    "logstash_formatter",
+    "prometheus_client",
+]
+
+[tool.setuptools.packages.find]
+include = ["insights_messaging*"]
+
+[project.license]
+text = "Apache-2.0"
+
+[project.urls]
+Homepage = "https://github.com/RedHatInsights/insights-core-messaging"
+
+[project.optional-dependencies]
+develop = [
+    "ipython",
+    "pytest",
+    "setuptools",
+    "twine",
+    "wheel",
+]
+testing = [
+    "confluent-kafka",
+    "coverage",
+    "pytest",
+    "pytest-cov",
+]
+linting = [
+    "ruff",
+]
+kafka = [
+    "confluent-kafka",
+]
+rabbitmq = [
+    "pika",
+]
+
+[tool.setuptools_scm]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["UP", "F632", "E", "W", "F", "I", "N", "B", "C4", "SIM"]
