@@ -6,7 +6,8 @@ correct order and that EngineWatcher/ConsumerWatcher interfaces work
 correctly with the Watched event system.
 """
 
-from unittest.mock import MagicMock, patch, PropertyMock
+import contextlib
+from unittest.mock import MagicMock
 
 from insights_messaging.consumers import Consumer
 from insights_messaging.watchers import (
@@ -15,10 +16,10 @@ from insights_messaging.watchers import (
     Watched,
 )
 
-
 # ---------------------------------------------------------------------------
 # ConsumerWatcher lifecycle tests
 # ---------------------------------------------------------------------------
+
 
 class RecordingConsumerWatcher(ConsumerWatcher):
     """A watcher that records the order of events fired."""
@@ -96,10 +97,8 @@ def test_consumer_watcher_failure_lifecycle():
     consumer.engine.process.side_effect = RuntimeError("engine failed")
 
     msg = {"url": "http://example.com/archive.tar.gz"}
-    try:
+    with contextlib.suppress(RuntimeError):
         consumer.process(msg)
-    except RuntimeError:
-        pass
 
     event_names = [e[0] for e in watcher.events]
     assert "on_recv" in event_names, "on_recv should fire before failure"
@@ -116,10 +115,8 @@ def test_consumer_watcher_complete_fires_on_failure():
     consumer.downloader.get.return_value.__enter__.side_effect = RuntimeError("download failed")
 
     msg = {"url": "http://example.com/archive.tar.gz"}
-    try:
+    with contextlib.suppress(RuntimeError):
         consumer.process(msg)
-    except RuntimeError:
-        pass
 
     event_names = [e[0] for e in watcher.events]
     assert event_names[-1] == "on_consumer_complete", (
@@ -130,6 +127,7 @@ def test_consumer_watcher_complete_fires_on_failure():
 # ---------------------------------------------------------------------------
 # EngineWatcher interface tests
 # ---------------------------------------------------------------------------
+
 
 def test_engine_watcher_default_methods_are_noop():
     """Verify EngineWatcher methods are safe no-ops by default."""
@@ -157,6 +155,7 @@ def test_consumer_watcher_default_methods_are_noop():
 # ---------------------------------------------------------------------------
 # Multiple watchers isolation tests
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_watchers_all_receive_events():
     """Verify that multiple watchers all receive events."""

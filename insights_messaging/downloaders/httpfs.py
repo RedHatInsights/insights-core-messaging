@@ -1,15 +1,16 @@
 import os
-import requests
 from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
+
+import requests
 
 
 class Http:
     def __init__(self, tmp_dir=None, chunk_size=16 * 1024):
         self.session = requests.Session()
 
-        user = os.environ.get("httpfs_username")
-        password = os.environ.get("httpfs_password")
+        user = os.environ.get("HTTPFS_USERNAME")
+        password = os.environ.get("HTTPFS_PASSWORD")
 
         if user is not None and password is not None:
             self.session.auth = (user, password)

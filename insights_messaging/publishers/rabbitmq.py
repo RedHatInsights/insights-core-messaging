@@ -1,22 +1,26 @@
 import logging
+
 import pika
+from utils import retry
 
 from . import Publisher
-from utils import retry
 
 log = logging.getLogger(__name__)
 
 
 class RabbitMQ(Publisher):
     def __init__(
-        self, queue, conn_params, exchange="", auth=None, durable=False,
+        self,
+        queue,
+        conn_params,
+        exchange="",
+        auth=None,
+        durable=False,
     ):
         self.queue = queue
         self.exchange = exchange
         self.durable = durable
-        self.properties = (
-            pika.BasicProperties(delivery_mode=2) if self.durable else None
-        )
+        self.properties = pika.BasicProperties(delivery_mode=2) if self.durable else None
 
         creds = None if auth is None else pika.credentials.PlainCredentials(**auth)
         if creds is not None:

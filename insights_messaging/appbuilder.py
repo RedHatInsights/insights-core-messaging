@@ -1,14 +1,14 @@
 import logging
 import logging.config
-from logstash_formatter import LogstashFormatterV1
 import os
 import sys
+
 import yaml
-
 from insights import apply_configs, apply_default_enabled, dr
+from logstash_formatter import LogstashFormatterV1
 
-from .consumers.cli import Interactive
 from .consumers import ArchiveContextIdsInjectingFilter
+from .consumers.cli import Interactive
 from .downloaders.localfs import LocalFS
 from .engine import Engine
 from .publishers.cli import StdOut
@@ -67,12 +67,12 @@ class AppBuilder:
         if "consumer" not in self.service:
             return Interactive(publisher, downloader, engine)
         spec = self.service["consumer"]
-        Consumer = dr.get_component(spec["name"])
-        if Consumer is None:
+        consumer_cls = dr.get_component(spec["name"])
+        if consumer_cls is None:
             raise Exception(f"Couldn't find {spec['name']}.")
         args = spec.get("args", [])
         kwargs = spec.get("kwargs", {})
-        return Consumer(publisher, downloader, engine, *args, requeuer=requeuer, **kwargs)
+        return consumer_cls(publisher, downloader, engine, *args, requeuer=requeuer, **kwargs)
 
     def _get_requeuer(self):
         if "requeuer" in self.service:
@@ -131,10 +131,10 @@ class AppBuilder:
         kwargs = spec.get("kwargs", {})
         engine_config = self._resolve_engine_config(kwargs)
 
-        EngineCls = dr.get_component(spec["name"])
-        if EngineCls is None:
+        engine_cls = dr.get_component(spec["name"])
+        if engine_cls is None:
             raise Exception(f"Couldn't find {spec['name']}.")
-        return EngineCls(**engine_config)
+        return engine_cls(**engine_config)
 
     # platform.payload-status
     def _get_downloader(self):
@@ -164,7 +164,7 @@ class AppBuilder:
             handler.setFormatter(LogstashFormatterV1())  # to keep the same format with cloud env
             logging.basicConfig(level=logging.DEBUG)
             logging.getLogger("insights.core.dr").setLevel(logging.ERROR)
-            # remove the default handler and just use the system stream handler for local environment
+            # remove the default handler, use the system stream handler for local env
             logging.root.removeHandler(logging.root.handlers[0])
             logging.root.addHandler(handler)
 

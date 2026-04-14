@@ -1,25 +1,38 @@
-from contextvars import ContextVar
 import logging
+from contextvars import ContextVar
+
 from insights import dr
+
 from insights_messaging.watchers import Watched
 
 log = logging.getLogger(__name__)
-archive_context_var = ContextVar('archive_context_ids', default={})
+# Default is None instead of {} to avoid sharing a mutable default across contexts (B039).
+# Callers must check for None or initialize with .set({}).
+archive_context_var = ContextVar("archive_context_ids", default=None)
+
 
 class ArchiveContextIdsInjectingFilter(logging.Filter):
     """
-    A filter which injects context-specific (inventory id, account id, request id) information into logs.
+    Injects context-specific IDs (inventory, account, request) into logs.
     """
+
     def filter(self, record):
         ids_dict = archive_context_var.get()
+        if ids_dict is None:
+            return True
         for k, v in ids_dict.items():
             setattr(record, k, v)
         return True
 
-class Requeue(Exception):
+
+class RequeueError(Exception):
     """
-    An Exception to mesasge a requeue request.
+    An Exception to message a requeue request.
     """
+
+
+# Backwards compatibility alias
+Requeue = RequeueError
 
 
 class Consumer(Watched):

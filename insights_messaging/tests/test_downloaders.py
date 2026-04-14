@@ -11,24 +11,24 @@ import tempfile
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
-from insights_messaging.downloaders.localfs import LocalFS
-from insights_messaging.downloaders.httpfs import Http
-from insights_messaging.downloaders.s3 import S3Downloader
+import pytest
 
+from insights_messaging.downloaders.httpfs import Http
+from insights_messaging.downloaders.localfs import LocalFS
+from insights_messaging.downloaders.s3 import S3Downloader
 
 # ---------------------------------------------------------------------------
 # LocalFS tests
 # ---------------------------------------------------------------------------
 
+
 def test_localfs_yields_real_path():
     """Verify that LocalFS.get() yields the realpath of the source."""
     fs = LocalFS()
-    with tempfile.NamedTemporaryFile() as f:
-        with fs.get(f.name) as path:
-            assert path == os.path.realpath(f.name), (
-                "LocalFS.get() should yield the realpath of the source, "
-                "got %r" % path
-            )
+    with tempfile.NamedTemporaryFile() as f, fs.get(f.name) as path:
+        assert path == os.path.realpath(f.name), (
+            f"LocalFS.get() should yield the realpath of the source, got {path!r}"
+        )
 
 
 def test_localfs_resolves_symlinks(tmp_path):
@@ -41,7 +41,7 @@ def test_localfs_resolves_symlinks(tmp_path):
     fs = LocalFS()
     with fs.get(str(link)) as path:
         assert path == str(real_file.resolve()), (
-            "LocalFS.get() should resolve symlinks, got %r" % path
+            f"LocalFS.get() should resolve symlinks, got {path!r}"
         )
 
 
@@ -57,10 +57,9 @@ def test_localfs_expands_user_home():
 def test_localfs_context_manager_cleanup():
     """Verify that LocalFS.get() works as a proper context manager."""
     fs = LocalFS()
-    with tempfile.NamedTemporaryFile() as f:
-        with fs.get(f.name) as path:
-            # Inside context: path should be valid.
-            assert isinstance(path, str)
+    with tempfile.NamedTemporaryFile() as f, fs.get(f.name) as path:
+        # Inside context: path should be valid.
+        assert isinstance(path, str)
         # Outside context: no cleanup needed for LocalFS, but should
         # not raise.
 
@@ -68,6 +67,7 @@ def test_localfs_context_manager_cleanup():
 # ---------------------------------------------------------------------------
 # Http downloader tests
 # ---------------------------------------------------------------------------
+
 
 @patch.dict(os.environ, {}, clear=True)
 def test_http_no_auth_by_default():
@@ -79,7 +79,7 @@ def test_http_no_auth_by_default():
         )
 
 
-@patch.dict(os.environ, {"httpfs_username": "user", "httpfs_password": "pass"})
+@patch.dict(os.environ, {"HTTPFS_USERNAME": "user", "HTTPFS_PASSWORD": "pass"})
 def test_http_sets_auth_from_env():
     """Verify that Http reads credentials from environment variables."""
     dl = Http()
@@ -97,11 +97,13 @@ def test_http_get_downloads_to_temp_file():
     mock_response.iter_content.return_value = [content]
     mock_response.raise_for_status = MagicMock()
 
-    with patch.object(dl.session, "get", return_value=mock_response):
-        with dl.get("http://example.com/archive.tar.gz") as path:
-            assert os.path.exists(path), "Downloaded file should exist"
-            with open(path, "rb") as f:
-                assert f.read() == content, "File content should match downloaded data"
+    with (
+        patch.object(dl.session, "get", return_value=mock_response),
+        dl.get("http://example.com/archive.tar.gz") as path,
+    ):
+        assert os.path.exists(path), "Downloaded file should exist"
+        with open(path, "rb") as f:
+            assert f.read() == content, "File content should match downloaded data"
 
     mock_response.raise_for_status.assert_called_once()
 
@@ -113,12 +115,11 @@ def test_http_get_raises_on_http_error():
     mock_response = MagicMock()
     mock_response.raise_for_status.side_effect = Exception("404 Not Found")
 
-    with patch.object(dl.session, "get", return_value=mock_response):
-        try:
-            with dl.get("http://example.com/missing.tar.gz") as path:
-                assert False, "Should have raised an exception"
-        except Exception as ex:
-            assert "404" in str(ex)
+    with (
+        patch.object(dl.session, "get", return_value=mock_response),
+        pytest.raises(Exception, match="404"),
+    ):
+        dl.get("http://example.com/missing.tar.gz").__enter__()
 
 
 def test_http_custom_chunk_size():
@@ -136,16 +137,19 @@ def test_http_custom_tmp_dir(tmp_path):
     mock_response.iter_content.return_value = [content]
     mock_response.raise_for_status = MagicMock()
 
-    with patch.object(dl.session, "get", return_value=mock_response):
-        with dl.get("http://example.com/file.tar.gz") as path:
-            assert path.startswith(str(tmp_path)), (
-                "Temp file should be created in the specified tmp_dir"
-            )
+    with (
+        patch.object(dl.session, "get", return_value=mock_response),
+        dl.get("http://example.com/file.tar.gz") as path,
+    ):
+        assert path.startswith(str(tmp_path)), (
+            "Temp file should be created in the specified tmp_dir"
+        )
 
 
 # ---------------------------------------------------------------------------
 # S3Downloader tests
 # ---------------------------------------------------------------------------
+
 
 @patch("s3fs.S3FileSystem.open")
 def test_s3_download_existing_file(mock_s3_open):
@@ -167,10 +171,7 @@ def test_s3_download_nonexistent_file(mock_s3_open):
     mock_s3_open.side_effect = FileNotFoundError("No such file")
 
     dl = S3Downloader(anon=True)
-    try:
-        with dl.get("s3://bucket/missing.tar.gz") as path:
-            assert False, "Should have raised FileNotFoundError"
-    except FileNotFoundError:
+    with pytest.raises(FileNotFoundError), dl.get("s3://bucket/missing.tar.gz"):
         pass
 
 

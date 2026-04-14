@@ -8,10 +8,10 @@ class is a no-op, and StdOut prints results to stdout.
 from insights_messaging.publishers import Publisher
 from insights_messaging.publishers.cli import StdOut
 
-
 # ---------------------------------------------------------------------------
 # Base Publisher tests
 # ---------------------------------------------------------------------------
+
 
 def test_publisher_publish_is_noop():
     """Verify that the base Publisher.publish() does not raise."""
@@ -29,6 +29,7 @@ def test_publisher_error_is_noop():
 # StdOut publisher tests
 # ---------------------------------------------------------------------------
 
+
 def test_stdout_publish_prints_results(capsys):
     """Verify that StdOut.publish() prints the results to stdout."""
     pub = StdOut()
@@ -36,8 +37,7 @@ def test_stdout_publish_prints_results(capsys):
 
     captured = capsys.readouterr()
     assert "test results" in captured.out, (
-        "StdOut.publish() should print results to stdout, got: %r"
-        % captured.out
+        f"StdOut.publish() should print results to stdout, got: {captured.out!r}"
     )
 
 

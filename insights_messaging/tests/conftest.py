@@ -6,7 +6,6 @@ import pytest
 
 from insights_messaging.consumers.kafka import KafkaMetrics
 
-
 # Module-level singleton to avoid prometheus_client's duplicate
 # registration error.  All tests that need KafkaMetrics share this
 # instance via the kafka_metrics fixture.

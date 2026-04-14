@@ -15,7 +15,6 @@ import pytest
 from insights_messaging.consumers import Consumer, Requeue
 from insights_messaging.watchers import ConsumerWatcher
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -28,8 +27,10 @@ EXPECTED_RESULTS = "analysis_results"
 # Mock infrastructure
 # ---------------------------------------------------------------------------
 
+
 class MockBroker:
     """Minimal broker mock matching the interface used by Consumer.process()."""
+
     def __init__(self):
         self.exceptions = defaultdict(list)
         self.tracebacks = {}
@@ -38,6 +39,7 @@ class MockBroker:
 
 class MockPublisher:
     """Publisher that records publish/error calls."""
+
     def __init__(self):
         self.published = []
         self.errors = []
@@ -51,6 +53,7 @@ class MockPublisher:
 
 class MockEngine:
     """Engine that returns canned results."""
+
     def __init__(self, result=EXPECTED_RESULTS, should_raise=None):
         self._result = result
         self._should_raise = should_raise
@@ -79,6 +82,7 @@ class MockDownloader:
 
 class RecordingConsumerWatcher(ConsumerWatcher):
     """Watcher that records the order of consumer lifecycle events."""
+
     def __init__(self):
         self.events = []
 
@@ -103,6 +107,7 @@ class RecordingConsumerWatcher(ConsumerWatcher):
 
 class StubConsumer(Consumer):
     """Concrete Consumer subclass for testing."""
+
     def __init__(self, publisher, downloader, engine, broker_factory=None):
         super().__init__(publisher, downloader, engine)
         self._broker_factory = broker_factory or MockBroker
@@ -121,6 +126,7 @@ class StubConsumer(Consumer):
 # Success path tests
 # ---------------------------------------------------------------------------
 
+
 def test_process_publishes_results():
     """Verify that process() publishes engine results on success."""
     publisher = MockPublisher()
@@ -129,7 +135,7 @@ def test_process_publishes_results():
     consumer.process("test_msg")
 
     assert len(publisher.published) == 1, (
-        "Expected exactly one publish call, got %d" % len(publisher.published)
+        f"Expected exactly one publish call, got {len(publisher.published)}"
     )
     msg, results = publisher.published[0]
     assert msg == "test_msg"
@@ -144,7 +150,7 @@ def test_process_downloads_url():
     consumer.process("test_msg")
 
     assert downloader.downloaded == [EXPECTED_URL], (
-        "Expected download of %r, got %r" % (EXPECTED_URL, downloader.downloaded)
+        f"Expected download of {EXPECTED_URL!r}, got {downloader.downloaded!r}"
     )
 
 
@@ -155,19 +161,16 @@ def test_process_passes_broker_to_engine():
 
     consumer.process("test_msg")
 
-    assert len(engine.processed) == 1, (
-        "Expected engine.process() to be called once"
-    )
+    assert len(engine.processed) == 1, "Expected engine.process() to be called once"
     broker, path = engine.processed[0]
-    assert isinstance(broker, MockBroker), (
-        "Broker should be a MockBroker instance"
-    )
+    assert isinstance(broker, MockBroker), "Broker should be a MockBroker instance"
     assert path == "/tmp/fake_archive"
 
 
 # ---------------------------------------------------------------------------
 # Watcher event ordering tests
 # ---------------------------------------------------------------------------
+
 
 def test_watcher_event_order_on_success():
     """Verify the order of watcher events during successful processing.
@@ -187,9 +190,7 @@ def test_watcher_event_order_on_success():
         "on_process",
         "on_consumer_success",
         "on_consumer_complete",
-    ], (
-        "Unexpected watcher event order: %s" % watcher.events
-    )
+    ], f"Unexpected watcher event order: {watcher.events}"
 
 
 def test_watcher_event_order_on_failure():
@@ -209,9 +210,7 @@ def test_watcher_event_order_on_failure():
     assert "on_consumer_failure" in watcher.events, (
         "on_consumer_failure should fire when engine raises"
     )
-    assert "on_consumer_complete" in watcher.events, (
-        "on_consumer_complete should always fire"
-    )
+    assert "on_consumer_complete" in watcher.events, "on_consumer_complete should always fire"
     assert "on_consumer_success" not in watcher.events, (
         "on_consumer_success should not fire when engine raises"
     )
@@ -236,6 +235,7 @@ def test_on_consumer_complete_fires_on_exception():
 # Error handling tests
 # ---------------------------------------------------------------------------
 
+
 def test_process_calls_publisher_error_on_exception():
     """Verify that process() calls publisher.error() when an exception occurs."""
     publisher = MockPublisher()
@@ -246,9 +246,7 @@ def test_process_calls_publisher_error_on_exception():
     with pytest.raises(RuntimeError):
         consumer.process("msg")
 
-    assert len(publisher.errors) == 1, (
-        "publisher.error() should be called once on engine failure"
-    )
+    assert len(publisher.errors) == 1, "publisher.error() should be called once on engine failure"
     msg, ex = publisher.errors[0]
     assert msg == "msg"
     assert ex is error
@@ -258,10 +256,9 @@ def test_process_calls_publisher_error_on_exception():
 # Requeue tests
 # ---------------------------------------------------------------------------
 
+
 def test_requeue_exception_exists():
     """Verify that Requeue is a proper exception class."""
-    assert issubclass(Requeue, Exception), (
-        "Requeue should be a subclass of Exception"
-    )
+    assert issubclass(Requeue, Exception), "Requeue should be a subclass of Exception"
     ex = Requeue("requeue reason")
     assert str(ex) == "requeue reason"

@@ -18,10 +18,10 @@ from insights_messaging.consumers import (
 )
 from insights_messaging.consumers.kafka import update_archive_context_ids
 
-
 # ---------------------------------------------------------------------------
 # update_archive_context_ids tests
 # ---------------------------------------------------------------------------
+
 
 def test_update_context_ids_sets_request_id():
     """Verify that update_archive_context_ids sets request_id from payload."""
@@ -32,9 +32,7 @@ def test_update_context_ids_sets_request_id():
     update_archive_context_ids(payload)
 
     ctx = archive_context_var.get()
-    assert ctx["request_id"] == "req-123", (
-        "request_id should be extracted from platform_metadata"
-    )
+    assert ctx["request_id"] == "req-123", "request_id should be extracted from platform_metadata"
     archive_context_var.set({})  # cleanup
 
 
@@ -47,9 +45,7 @@ def test_update_context_ids_sets_inventory_id():
     update_archive_context_ids(payload)
 
     ctx = archive_context_var.get()
-    assert ctx["inventory_id"] == "host-456", (
-        "inventory_id should be extracted from host.id"
-    )
+    assert ctx["inventory_id"] == "host-456", "inventory_id should be extracted from host.id"
     archive_context_var.set({})  # cleanup
 
 
@@ -62,12 +58,8 @@ def test_update_context_ids_handles_missing_keys():
     update_archive_context_ids(payload)
 
     ctx = archive_context_var.get()
-    assert "request_id" not in ctx, (
-        "request_id should not be set when missing from payload"
-    )
-    assert "inventory_id" not in ctx, (
-        "inventory_id should not be set when missing from payload"
-    )
+    assert "request_id" not in ctx, "request_id should not be set when missing from payload"
+    assert "inventory_id" not in ctx, "inventory_id should not be set when missing from payload"
     archive_context_var.set({})  # cleanup
 
 
@@ -75,9 +67,7 @@ def test_update_context_ids_noop_for_none():
     """Verify that update_archive_context_ids is safe with None payload."""
     archive_context_var.set({})
     update_archive_context_ids(None)
-    assert archive_context_var.get() == {}, (
-        "Context should remain empty for None payload"
-    )
+    assert archive_context_var.get() == {}, "Context should remain empty for None payload"
 
 
 def test_update_context_ids_noop_for_missing_structure():
@@ -93,28 +83,32 @@ def test_update_context_ids_noop_for_missing_structure():
 # ArchiveContextIdsInjectingFilter tests
 # ---------------------------------------------------------------------------
 
+
 def test_filter_injects_context_ids():
     """Verify that the logging filter injects context IDs into log records."""
-    archive_context_var.set({
-        "request_id": "req-abc",
-        "inventory_id": "inv-def",
-    })
+    archive_context_var.set(
+        {
+            "request_id": "req-abc",
+            "inventory_id": "inv-def",
+        }
+    )
 
     f = ArchiveContextIdsInjectingFilter()
     record = logging.LogRecord(
-        name="test", level=logging.INFO, pathname="", lineno=0,
-        msg="test message", args=(), exc_info=None,
+        name="test",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg="test message",
+        args=(),
+        exc_info=None,
     )
 
     result = f.filter(record)
 
     assert result is True, "Filter should always return True (pass the record)"
-    assert record.request_id == "req-abc", (
-        "Filter should inject request_id into the log record"
-    )
-    assert record.inventory_id == "inv-def", (
-        "Filter should inject inventory_id into the log record"
-    )
+    assert record.request_id == "req-abc", "Filter should inject request_id into the log record"
+    assert record.inventory_id == "inv-def", "Filter should inject inventory_id into the log record"
     archive_context_var.set({})  # cleanup
 
 
@@ -124,8 +118,13 @@ def test_filter_handles_empty_context():
 
     f = ArchiveContextIdsInjectingFilter()
     record = logging.LogRecord(
-        name="test", level=logging.INFO, pathname="", lineno=0,
-        msg="test", args=(), exc_info=None,
+        name="test",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg="test",
+        args=(),
+        exc_info=None,
     )
 
     result = f.filter(record)
@@ -136,6 +135,7 @@ def test_filter_handles_empty_context():
 # ---------------------------------------------------------------------------
 # KafkaMetrics.stats_to_metrics tests
 # ---------------------------------------------------------------------------
+
 
 def test_stats_to_metrics_parses_json(kafka_metrics):
     """Verify that stats_to_metrics correctly parses and records stats."""
@@ -156,9 +156,7 @@ def test_stats_to_metrics_parses_json(kafka_metrics):
     sample = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT.labels(
         type="consumer", client_id="test-client-1", state="up"
     )._value.get()
-    assert sample == 42, (
-        "Rebalance count should be 42, got %s" % sample
-    )
+    assert sample == 42, f"Rebalance count should be 42, got {sample}"
 
 
 def test_stats_to_metrics_sets_reply_queue(kafka_metrics):
@@ -179,9 +177,7 @@ def test_stats_to_metrics_sets_reply_queue(kafka_metrics):
     sample = kafka_metrics.KAFKA_CONSUMER_REPLY_QUEUE_SIZE.labels(
         type="consumer", client_id="test-client-2"
     )._value.get()
-    assert sample == 15, (
-        "Reply queue size should be 15, got %s" % sample
-    )
+    assert sample == 15, f"Reply queue size should be 15, got {sample}"
 
 
 def test_stats_to_metrics_sets_rebalance_age(kafka_metrics):
@@ -202,6 +198,4 @@ def test_stats_to_metrics_sets_rebalance_age(kafka_metrics):
     sample = kafka_metrics.KAFKA_CONSUMER_REBALANCE_AGE.labels(
         type="consumer", client_id="test-client-3"
     )._value.get()
-    assert sample == 12345, (
-        "Rebalance age should be 12345, got %s" % sample
-    )
+    assert sample == 12345, f"Rebalance age should be 12345, got {sample}"

@@ -1,4 +1,5 @@
 import logging
+
 from . import Consumer
 
 log = logging.getLogger(__name__)
