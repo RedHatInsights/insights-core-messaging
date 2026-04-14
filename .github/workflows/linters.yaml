@@ -2,7 +2,7 @@ name: Linters
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, master]
   pull_request:
 
 jobs:
