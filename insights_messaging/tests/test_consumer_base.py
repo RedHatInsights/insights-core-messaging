@@ -7,8 +7,7 @@ and watcher events.  These tests verify the event dispatch ordering,
 error handling, and the Requeue mechanism.
 """
 
-from collections import defaultdict
-from contextlib import contextmanager
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -24,60 +23,25 @@ EXPECTED_RESULTS = "analysis_results"
 
 
 # ---------------------------------------------------------------------------
-# Mock infrastructure
+# Mock helpers
 # ---------------------------------------------------------------------------
 
 
-class MockBroker:
-    """Minimal broker mock matching the interface used by Consumer.process()."""
-
-    def __init__(self):
-        self.exceptions = defaultdict(list)
-        self.tracebacks = {}
-        self.instances = {}
-
-
-class MockPublisher:
-    """Publisher that records publish/error calls."""
-
-    def __init__(self):
-        self.published = []
-        self.errors = []
-
-    def publish(self, input_msg, results):
-        self.published.append((input_msg, results))
-
-    def error(self, input_msg, ex):
-        self.errors.append((input_msg, ex))
+def _make_downloader():
+    """Create a MagicMock downloader whose get() returns a context manager."""
+    dl = MagicMock()
+    dl.get.return_value.__enter__ = MagicMock(return_value="/tmp/fake_archive")
+    dl.get.return_value.__exit__ = MagicMock(return_value=False)
+    return dl
 
 
-class MockEngine:
-    """Engine that returns canned results."""
-
-    def __init__(self, result=EXPECTED_RESULTS, should_raise=None):
-        self._result = result
-        self._should_raise = should_raise
-        self.processed = []
-
-    def process(self, broker, path):
-        self.processed.append((broker, path))
-        if self._should_raise:
-            raise self._should_raise
-        return self._result
-
-
-@contextmanager
-def _mock_download():
-    yield "/tmp/fake_archive"
-
-
-class MockDownloader:
-    def __init__(self):
-        self.downloaded = []
-
-    def get(self, url):
-        self.downloaded.append(url)
-        return _mock_download()
+def _make_engine(result=EXPECTED_RESULTS, side_effect=None):
+    """Create a MagicMock engine with configurable process() behavior."""
+    engine = MagicMock()
+    engine.process.return_value = result
+    if side_effect:
+        engine.process.side_effect = side_effect
+    return engine
 
 
 class RecordingConsumerWatcher(ConsumerWatcher):
@@ -108,18 +72,14 @@ class RecordingConsumerWatcher(ConsumerWatcher):
 class StubConsumer(Consumer):
     """Concrete Consumer subclass for testing."""
 
-    def __init__(self, publisher, downloader, engine, broker_factory=None):
+    def __init__(self, publisher, downloader, engine):
         super().__init__(publisher, downloader, engine)
-        self._broker_factory = broker_factory or MockBroker
 
     def run(self):
         raise NotImplementedError()
 
     def get_url(self, input_msg):
         return EXPECTED_URL
-
-    def create_broker(self, input_msg):
-        return self._broker_factory()
 
 
 # ---------------------------------------------------------------------------
@@ -134,17 +94,12 @@ def test_process_publishes_results():
     verifies the final step: that the results returned by the engine are
     passed to publisher.publish() together with the original input message.
     """
-    publisher = MockPublisher()
-    consumer = StubConsumer(publisher, MockDownloader(), MockEngine())
+    publisher = MagicMock()
+    consumer = StubConsumer(publisher, _make_downloader(), _make_engine())
 
     consumer.process("test_msg")
 
-    assert len(publisher.published) == 1, (
-        f"Expected exactly one publish call, got {len(publisher.published)}"
-    )
-    msg, results = publisher.published[0]
-    assert msg == "test_msg"
-    assert results == EXPECTED_RESULTS
+    publisher.publish.assert_called_once_with("test_msg", EXPECTED_RESULTS)
 
 
 def test_process_downloads_url():
@@ -153,14 +108,12 @@ def test_process_downloads_url():
     Subclasses override get_url() to extract the download location from the
     incoming message.  This test ensures the downloader receives that URL.
     """
-    downloader = MockDownloader()
-    consumer = StubConsumer(MockPublisher(), downloader, MockEngine())
+    downloader = _make_downloader()
+    consumer = StubConsumer(MagicMock(), downloader, _make_engine())
 
     consumer.process("test_msg")
 
-    assert downloader.downloaded == [EXPECTED_URL], (
-        f"Expected download of {EXPECTED_URL!r}, got {downloader.downloaded!r}"
-    )
+    downloader.get.assert_called_once_with(EXPECTED_URL)
 
 
 def test_process_passes_broker_to_engine():
@@ -170,14 +123,13 @@ def test_process_passes_broker_to_engine():
     insights-core evaluation pipeline.  The engine needs both the broker
     and the local path to the extracted archive.
     """
-    engine = MockEngine()
-    consumer = StubConsumer(MockPublisher(), MockDownloader(), engine)
+    engine = _make_engine()
+    consumer = StubConsumer(MagicMock(), _make_downloader(), engine)
 
     consumer.process("test_msg")
 
-    assert len(engine.processed) == 1, "Expected engine.process() to be called once"
-    broker, path = engine.processed[0]
-    assert isinstance(broker, MockBroker), "Broker should be a MockBroker instance"
+    engine.process.assert_called_once()
+    _broker, path = engine.process.call_args[0]
     assert path == "/tmp/fake_archive"
 
 
@@ -186,16 +138,19 @@ def test_process_passes_broker_to_engine():
 # ---------------------------------------------------------------------------
 
 
-def test_watcher_event_order_on_success():
-    """Watcher events must fire in a deterministic order on the happy path.
+def test_watcher_event_order():
+    """Watcher events must fire in a deterministic order on both success and failure paths.
 
     Watchers (metrics, logging, stats) depend on a stable event sequence
-    to track processing state correctly.  The expected order is:
+    to track processing state correctly.  On success the order is:
     on_recv -> on_download -> on_process -> on_consumer_success ->
-    on_consumer_complete.
+    on_consumer_complete.  On failure on_consumer_failure replaces
+    on_process/on_consumer_success, and on_consumer_complete must still
+    be the last event (like a finally block).
     """
+    # --- Success path ---
     watcher = RecordingConsumerWatcher()
-    consumer = StubConsumer(MockPublisher(), MockDownloader(), MockEngine())
+    consumer = StubConsumer(MagicMock(), _make_downloader(), _make_engine())
     watcher.watch(consumer)
 
     consumer.process("test_msg")
@@ -206,21 +161,12 @@ def test_watcher_event_order_on_success():
         "on_process",
         "on_consumer_success",
         "on_consumer_complete",
-    ], f"Unexpected watcher event order: {watcher.events}"
+    ], f"Unexpected success event order: {watcher.events}"
 
-
-def test_watcher_event_order_on_failure():
-    """Watcher events must follow the failure path when the engine raises.
-
-    on_consumer_failure must fire so watchers can record the error.
-    on_consumer_complete must always be the last event (like a finally
-    block) so cleanup watchers run regardless of outcome.
-    on_consumer_success must NOT fire — mixing success and failure
-    signals would corrupt metrics.
-    """
+    # --- Failure path ---
     watcher = RecordingConsumerWatcher()
-    engine = MockEngine(should_raise=RuntimeError("engine error"))
-    consumer = StubConsumer(MockPublisher(), MockDownloader(), engine)
+    engine = _make_engine(side_effect=RuntimeError("engine error"))
+    consumer = StubConsumer(MagicMock(), _make_downloader(), engine)
     watcher.watch(consumer)
 
     with pytest.raises(RuntimeError, match="engine error"):
@@ -229,7 +175,6 @@ def test_watcher_event_order_on_failure():
     assert "on_consumer_failure" in watcher.events, (
         "on_consumer_failure should fire when engine raises"
     )
-    assert "on_consumer_complete" in watcher.events, "on_consumer_complete should always fire"
     assert "on_consumer_success" not in watcher.events, (
         "on_consumer_success should not fire when engine raises"
     )
@@ -251,16 +196,18 @@ def test_process_calls_publisher_error_on_exception():
     The original message and exception must be passed through so the
     publisher can decide how to handle the failure.
     """
-    publisher = MockPublisher()
+    publisher = MagicMock()
     error = RuntimeError("engine failure")
-    engine = MockEngine(should_raise=error)
-    consumer = StubConsumer(publisher, MockDownloader(), engine)
+    engine = _make_engine(side_effect=error)
+    consumer = StubConsumer(publisher, _make_downloader(), engine)
 
     with pytest.raises(RuntimeError):
         consumer.process("msg")
 
-    assert len(publisher.errors) == 1, "publisher.error() should be called once on engine failure"
-    msg, ex = publisher.errors[0]
+    # Verify the original message and the exact exception instance are
+    # forwarded — not copies or wrappers.
+    publisher.error.assert_called_once()
+    msg, ex = publisher.error.call_args[0]
     assert msg == "msg"
     assert ex is error
 

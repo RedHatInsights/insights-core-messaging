@@ -28,8 +28,10 @@ def test_update_context_ids_sets_fields():
 
     These IDs are injected into every log message via ArchiveContextIdsInjectingFilter,
     enabling correlation of log lines to specific archive processing requests
-    across distributed services.
+    across distributed services.  When the payload keys are absent, the
+    context must remain empty to avoid polluting log output.
     """
+    # --- Present keys ---
     payload = {
         "platform_metadata": {"request_id": "req-123"},
         "host": {"id": "host-456"},
@@ -41,19 +43,8 @@ def test_update_context_ids_sets_fields():
     assert ctx["inventory_id"] == "host-456", "inventory_id should be extracted from host.id"
     archive_context_var.set({})  # cleanup
 
-
-def test_update_context_ids_handles_missing_keys():
-    """update_archive_context_ids must not set context fields when payload keys are absent.
-
-    Some messages may have empty platform_metadata or host dicts (e.g.
-    internal test messages).  The function must not crash or inject
-    None/empty values into the context, as that would pollute log output.
-    """
-    payload = {
-        "platform_metadata": {},
-        "host": {},
-    }
-    update_archive_context_ids(payload)
+    # --- Missing keys ---
+    update_archive_context_ids({"platform_metadata": {}, "host": {}})
 
     ctx = archive_context_var.get()
     assert "request_id" not in ctx, "request_id should not be set when missing from payload"
