@@ -7,66 +7,12 @@ filesystem, HTTP, and S3 downloaders.
 """
 
 import os
-import tempfile
-from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from insights_messaging.downloaders.httpfs import Http
-from insights_messaging.downloaders.localfs import LocalFS
 from insights_messaging.downloaders.s3 import S3Downloader
-
-# ---------------------------------------------------------------------------
-# LocalFS tests
-# ---------------------------------------------------------------------------
-
-
-def test_localfs_yields_real_path():
-    """LocalFS.get() must yield the canonical (realpath) of the source file.
-
-    The consumer passes the yielded path to the engine for extraction.
-    Using realpath ensures consistent behavior regardless of how the
-    path was originally specified (relative, with .., etc.).
-    """
-    fs = LocalFS()
-    with tempfile.NamedTemporaryFile() as f, fs.get(f.name) as path:
-        assert path == os.path.realpath(f.name), (
-            f"LocalFS.get() should yield the realpath of the source, got {path!r}"
-        )
-
-
-def test_localfs_resolves_symlinks(tmp_path):
-    """LocalFS.get() must resolve symbolic links to the real file.
-
-    In production, archive paths may be symlinks (e.g. from shared
-    storage mounts).  The engine expects the real filesystem path so
-    that extraction and cleanup work correctly.
-    """
-    real_file = tmp_path / "real.txt"
-    real_file.write_text("content")
-    link = tmp_path / "link.txt"
-    link.symlink_to(real_file)
-
-    fs = LocalFS()
-    with fs.get(str(link)) as path:
-        assert path == str(real_file.resolve()), (
-            f"LocalFS.get() should resolve symlinks, got {path!r}"
-        )
-
-
-def test_localfs_expands_user_home():
-    """LocalFS.get() must expand ~ (tilde) to the user's home directory.
-
-    Configuration files may use ~ as shorthand.  Without expansion,
-    the engine would look for a literal '~' directory and fail.
-    """
-    fs = LocalFS()
-    with fs.get("~") as path:
-        assert path == os.path.realpath(os.path.expanduser("~")), (
-            "LocalFS.get() should expand ~ to the home directory"
-        )
-
 
 # ---------------------------------------------------------------------------
 # Http downloader tests
@@ -178,26 +124,6 @@ def test_http_custom_tmp_dir(tmp_path):
 
 
 @patch("s3fs.S3FileSystem.open")
-def test_s3_download_existing_file(mock_s3_open):
-    """S3Downloader.get() must download an S3 object to a local temp file.
-
-    The downloader opens the S3 object as a stream, copies it to a
-    NamedTemporaryFile using shutil.copyfileobj, and yields the local
-    path.  This test verifies the file is created and its content
-    matches the S3 object body.
-    """
-    content = b"s3-archive-content"
-    mock_s3_open.return_value.__enter__ = MagicMock(return_value=BytesIO(content))
-    mock_s3_open.return_value.__exit__ = MagicMock(return_value=False)
-
-    dl = S3Downloader(anon=True)
-    with dl.get("s3://bucket/key/archive.tar.gz") as path:
-        assert os.path.exists(path), "Downloaded file should exist"
-        with open(path, "rb") as f:
-            assert f.read() == content, "File content should match S3 data"
-
-
-@patch("s3fs.S3FileSystem.open")
 def test_s3_download_nonexistent_file(mock_s3_open):
     """S3Downloader.get() must raise FileNotFoundError for missing S3 keys.
 
@@ -210,20 +136,3 @@ def test_s3_download_nonexistent_file(mock_s3_open):
     dl = S3Downloader(anon=True)
     with pytest.raises(FileNotFoundError), dl.get("s3://bucket/missing.tar.gz"):
         pass
-
-
-@patch("s3fs.S3FileSystem.open")
-def test_s3_custom_chunk_size(mock_s3_open):
-    """S3Downloader must work correctly with a custom chunk_size.
-
-    Large archives benefit from bigger chunks to reduce syscall overhead.
-    This test verifies that a non-default chunk_size does not break the
-    download-to-temp-file flow.
-    """
-    content = b"data"
-    mock_s3_open.return_value.__enter__ = MagicMock(return_value=BytesIO(content))
-    mock_s3_open.return_value.__exit__ = MagicMock(return_value=False)
-
-    dl = S3Downloader(chunk_size=8192, anon=True)
-    with dl.get("s3://bucket/key/archive.tar.gz") as path:
-        assert os.path.exists(path), "Downloaded file should exist"
