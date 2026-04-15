@@ -14,10 +14,6 @@ import pytest
 from insights_messaging.downloaders.httpfs import Http
 from insights_messaging.downloaders.s3 import S3Downloader
 
-# ---------------------------------------------------------------------------
-# Http downloader tests
-# ---------------------------------------------------------------------------
-
 
 @pytest.mark.parametrize(
     ("env_vars", "expected_auth"),
@@ -109,11 +105,6 @@ def test_http_custom_tmp_dir(tmp_path):
         assert path.startswith(str(tmp_path)), (
             "Temp file should be created in the specified tmp_dir"
         )
-
-
-# ---------------------------------------------------------------------------
-# S3Downloader tests
-# ---------------------------------------------------------------------------
 
 
 @patch("s3fs.S3FileSystem.open")

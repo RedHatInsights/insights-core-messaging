@@ -20,9 +20,17 @@ from insights_messaging.consumers import (
 )
 from insights_messaging.consumers.kafka import update_archive_context_ids
 
-# ---------------------------------------------------------------------------
-# update_archive_context_ids tests
-# ---------------------------------------------------------------------------
+
+def _make_log_record(msg="test"):
+    return logging.LogRecord(
+        name="test",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg=msg,
+        args=(),
+        exc_info=None,
+    )
 
 
 def test_update_context_ids_sets_fields():
@@ -73,74 +81,31 @@ def test_update_context_ids_noop_for_invalid_payload(payload):
     assert archive_context_var.get() == {}, f"Context should remain empty for payload {payload!r}"
 
 
-# ---------------------------------------------------------------------------
-# ArchiveContextIdsInjectingFilter tests
-# ---------------------------------------------------------------------------
-
-
 def test_filter_injects_context_ids():
     """ArchiveContextIdsInjectingFilter must copy context IDs onto log records.
 
-    The logging filter reads request_id and inventory_id from the
-    thread-local ContextVar and sets them as attributes on each
-    LogRecord.  Log formatters then include these IDs in output,
-    enabling log correlation across services.
+    When context is populated, the filter sets request_id and inventory_id
+    as attributes on each LogRecord.  When context is empty (between
+    messages or during startup), it must not add attributes with None
+    values — that would cause format string errors in log formatters.
     """
-    archive_context_var.set(
-        {
-            "request_id": "req-abc",
-            "inventory_id": "inv-def",
-        }
-    )
-
+    # --- With context ---
+    archive_context_var.set({"request_id": "req-abc", "inventory_id": "inv-def"})
     f = ArchiveContextIdsInjectingFilter()
-    record = logging.LogRecord(
-        name="test",
-        level=logging.INFO,
-        pathname="",
-        lineno=0,
-        msg="test message",
-        args=(),
-        exc_info=None,
-    )
+    record = _make_log_record()
 
     result = f.filter(record)
 
-    assert result is True, "Filter should always return True (pass the record)"
-    assert record.request_id == "req-abc", "Filter should inject request_id into the log record"
-    assert record.inventory_id == "inv-def", "Filter should inject inventory_id into the log record"
+    assert result is True
+    assert record.request_id == "req-abc"
+    assert record.inventory_id == "inv-def"
     archive_context_var.set({})  # cleanup
 
-
-def test_filter_handles_empty_context():
-    """ArchiveContextIdsInjectingFilter must not add attributes when context is empty.
-
-    Between messages (or during startup), the ContextVar is empty.
-    The filter must still return True (pass the record) and must not
-    add request_id/inventory_id attributes with None values — that
-    would cause format string errors in log formatters.
-    """
-    archive_context_var.set({})
-
-    f = ArchiveContextIdsInjectingFilter()
-    record = logging.LogRecord(
-        name="test",
-        level=logging.INFO,
-        pathname="",
-        lineno=0,
-        msg="test",
-        args=(),
-        exc_info=None,
-    )
-
+    # --- Empty context ---
+    record = _make_log_record()
     result = f.filter(record)
     assert result is True
     assert not hasattr(record, "request_id")
-
-
-# ---------------------------------------------------------------------------
-# KafkaMetrics.stats_to_metrics tests
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
