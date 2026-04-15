@@ -20,7 +20,12 @@ from insights_messaging.watchers import (
 
 
 def test_fire_dispatches_to_watchers():
-    """Verify that fire() calls the matching method on all watchers."""
+    """Watched.fire() must call the named method on every registered watcher.
+
+    Multiple watchers (metrics, logging, stats) can be attached to a
+    single consumer or engine.  fire() must fan out to all of them so
+    that no observer is silently skipped.
+    """
     watched = Watched()
     w1 = Mock()
     w2 = Mock()
@@ -34,7 +39,12 @@ def test_fire_dispatches_to_watchers():
 
 
 def test_fire_with_multiple_args():
-    """Verify that fire() passes all args to the watcher method."""
+    """Watched.fire() must forward all positional arguments to the watcher method.
+
+    Events like on_process(input_msg, results) carry multiple arguments.
+    fire() must pass them through so watchers receive the full context
+    needed to record metrics or logs.
+    """
     watched = Watched()
     w = Mock()
     watched.add_watcher(w)
@@ -45,7 +55,12 @@ def test_fire_with_multiple_args():
 
 
 def test_fire_ignores_missing_event():
-    """Verify that fire() does not crash when the watcher lacks the method."""
+    """Watched.fire() must silently skip watchers that lack the fired method.
+
+    Not every watcher implements every event.  An EngineWatcher may not
+    have on_recv, and a ConsumerWatcher may not have on_engine_complete.
+    fire() must use getattr with a fallback to avoid AttributeError.
+    """
     watched = Watched()
     w = Mock(spec=[])  # spec=[] means no attributes/methods
     watched.add_watcher(w)
@@ -55,10 +70,13 @@ def test_fire_ignores_missing_event():
 
 
 def test_fire_isolates_watcher_exceptions(caplog):
-    """Verify that a failing watcher does not prevent others from running.
+    """Watched.fire() must isolate exceptions so one failing watcher cannot block others.
 
-    If one watcher raises an exception, the remaining watchers must still
-    receive the event.  The exception is logged but not propagated.
+    In production, a bug in a stats watcher must not prevent the logging
+    watcher from recording the event.  fire() catches exceptions per
+    watcher, logs them, and continues to the next watcher.  This is
+    critical for reliability — a watcher failure should never break
+    message processing.
     """
     watched = Watched()
     failing = Mock()
@@ -75,7 +93,11 @@ def test_fire_isolates_watcher_exceptions(caplog):
 
 
 def test_fire_with_no_watchers():
-    """Verify that fire() does nothing when there are no watchers."""
+    """Watched.fire() must be a safe no-op when no watchers are registered.
+
+    A consumer can run without any watchers (e.g. in minimal test
+    setups).  fire() must not raise when the watcher list is empty.
+    """
     watched = Watched()
     # Should not raise.
     watched.fire("on_recv", "msg")
@@ -87,7 +109,11 @@ def test_fire_with_no_watchers():
 
 
 def test_watcher_watch_adds_to_watched():
-    """Verify that Watcher.watch() adds itself to the Watched's watcher list."""
+    """Watcher.watch() must register the watcher with the target Watched object.
+
+    This is the primary API for attaching observers.  After watch() is
+    called, subsequent fire() calls on the Watched must reach this watcher.
+    """
     watched = Watched()
     watcher = Watcher()
     watcher.watch(watched)

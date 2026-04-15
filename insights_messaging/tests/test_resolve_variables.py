@@ -79,6 +79,15 @@ service:
 
 
 def test_resolve_variables():
+    """resolve_variables() must substitute env vars and defaults throughout the config tree.
+
+    The function walks the entire nested YAML config and applies
+    DefaultingTemplate substitution to every string value.  Undefined
+    env vars without defaults are left as-is (e.g. $BOOTSTRAP_URL),
+    while ${VAR:default} syntax resolves to the default.  Non-string
+    values (booleans, integers) must pass through unchanged.  Type
+    coercion is also tested: port numbers should become ints.
+    """
     res = resolve_variables(CONF)
     assert res["plugins"]["default_component_enabled"] is True
     assert res["service"]["extract_timeout"] == 10

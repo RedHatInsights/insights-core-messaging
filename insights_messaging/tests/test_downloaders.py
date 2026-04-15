@@ -23,7 +23,12 @@ from insights_messaging.downloaders.s3 import S3Downloader
 
 
 def test_localfs_yields_real_path():
-    """Verify that LocalFS.get() yields the realpath of the source."""
+    """LocalFS.get() must yield the canonical (realpath) of the source file.
+
+    The consumer passes the yielded path to the engine for extraction.
+    Using realpath ensures consistent behavior regardless of how the
+    path was originally specified (relative, with .., etc.).
+    """
     fs = LocalFS()
     with tempfile.NamedTemporaryFile() as f, fs.get(f.name) as path:
         assert path == os.path.realpath(f.name), (
@@ -32,7 +37,12 @@ def test_localfs_yields_real_path():
 
 
 def test_localfs_resolves_symlinks(tmp_path):
-    """Verify that LocalFS.get() resolves symbolic links."""
+    """LocalFS.get() must resolve symbolic links to the real file.
+
+    In production, archive paths may be symlinks (e.g. from shared
+    storage mounts).  The engine expects the real filesystem path so
+    that extraction and cleanup work correctly.
+    """
     real_file = tmp_path / "real.txt"
     real_file.write_text("content")
     link = tmp_path / "link.txt"
@@ -46,7 +56,11 @@ def test_localfs_resolves_symlinks(tmp_path):
 
 
 def test_localfs_expands_user_home():
-    """Verify that LocalFS.get() expands ~ in paths."""
+    """LocalFS.get() must expand ~ (tilde) to the user's home directory.
+
+    Configuration files may use ~ as shorthand.  Without expansion,
+    the engine would look for a literal '~' directory and fail.
+    """
     fs = LocalFS()
     with fs.get("~") as path:
         assert path == os.path.realpath(os.path.expanduser("~")), (
@@ -61,7 +75,13 @@ def test_localfs_expands_user_home():
 
 @patch.dict(os.environ, {}, clear=True)
 def test_http_no_auth_by_default():
-    """Verify that Http does not set auth when env vars are absent."""
+    """Http must not set session auth when credential env vars are absent.
+
+    In environments without authentication (e.g. internal services behind
+    a VPN), sending credentials would be incorrect.  The Http downloader
+    reads httpfs_username/httpfs_password from the environment and must
+    leave session.auth as None when they are not set.
+    """
     with patch.dict(os.environ, {}, clear=True):
         dl = Http()
         assert dl.session.auth is None, (
@@ -71,7 +91,12 @@ def test_http_no_auth_by_default():
 
 @patch.dict(os.environ, {"httpfs_username": "user", "httpfs_password": "pass"})
 def test_http_sets_auth_from_env():
-    """Verify that Http reads credentials from environment variables."""
+    """Http must configure session auth from httpfs_username/httpfs_password env vars.
+
+    When both env vars are present, session.auth should be set as a
+    (username, password) tuple so that every HTTP request includes
+    Basic auth headers.
+    """
     dl = Http()
     assert dl.session.auth == ("user", "pass"), (
         "Http should set session.auth from httpfs_username/httpfs_password env vars"
@@ -79,7 +104,14 @@ def test_http_sets_auth_from_env():
 
 
 def test_http_get_downloads_to_temp_file():
-    """Verify that Http.get() downloads content to a temporary file."""
+    """Http.get() must stream the response body into a temporary file.
+
+    The consumer needs a local file path for the engine to extract.
+    Http.get() downloads the archive via chunked streaming, writes it
+    to a temp file, and yields the path.  This test verifies the file
+    exists and contains the expected bytes, and that raise_for_status()
+    is called to catch HTTP errors early.
+    """
     dl = Http()
     content = b"archive-content-bytes"
 
@@ -99,7 +131,12 @@ def test_http_get_downloads_to_temp_file():
 
 
 def test_http_get_raises_on_http_error():
-    """Verify that Http.get() propagates HTTP errors."""
+    """Http.get() must propagate HTTP errors (4xx/5xx) to the caller.
+
+    The consumer relies on exceptions to trigger error handling and
+    watcher notifications.  Silently swallowing HTTP errors would cause
+    the engine to process an empty or corrupt file.
+    """
     dl = Http()
 
     mock_response = MagicMock()
@@ -113,7 +150,12 @@ def test_http_get_raises_on_http_error():
 
 
 def test_http_custom_tmp_dir(tmp_path):
-    """Verify that Http uses custom tmp_dir for temp files."""
+    """Http must create temp files in the configured tmp_dir.
+
+    In production, the default /tmp may be too small or on a different
+    filesystem.  The tmp_dir parameter allows operators to point
+    downloads at a volume with sufficient space.
+    """
     dl = Http(tmp_dir=str(tmp_path))
     content = b"test-data"
 
@@ -137,7 +179,13 @@ def test_http_custom_tmp_dir(tmp_path):
 
 @patch("s3fs.S3FileSystem.open")
 def test_s3_download_existing_file(mock_s3_open):
-    """Verify that S3Downloader.get() downloads an existing S3 file."""
+    """S3Downloader.get() must download an S3 object to a local temp file.
+
+    The downloader opens the S3 object as a stream, copies it to a
+    NamedTemporaryFile using shutil.copyfileobj, and yields the local
+    path.  This test verifies the file is created and its content
+    matches the S3 object body.
+    """
     content = b"s3-archive-content"
     mock_s3_open.return_value.__enter__ = MagicMock(return_value=BytesIO(content))
     mock_s3_open.return_value.__exit__ = MagicMock(return_value=False)
@@ -151,7 +199,12 @@ def test_s3_download_existing_file(mock_s3_open):
 
 @patch("s3fs.S3FileSystem.open")
 def test_s3_download_nonexistent_file(mock_s3_open):
-    """Verify that S3Downloader.get() raises on missing S3 file."""
+    """S3Downloader.get() must raise FileNotFoundError for missing S3 keys.
+
+    When the archive has been deleted or the S3 key is wrong, the error
+    must propagate so the consumer can log it and notify watchers rather
+    than silently processing nothing.
+    """
     mock_s3_open.side_effect = FileNotFoundError("No such file")
 
     dl = S3Downloader(anon=True)
@@ -161,7 +214,12 @@ def test_s3_download_nonexistent_file(mock_s3_open):
 
 @patch("s3fs.S3FileSystem.open")
 def test_s3_custom_chunk_size(mock_s3_open):
-    """Verify that S3Downloader respects custom chunk_size."""
+    """S3Downloader must work correctly with a custom chunk_size.
+
+    Large archives benefit from bigger chunks to reduce syscall overhead.
+    This test verifies that a non-default chunk_size does not break the
+    download-to-temp-file flow.
+    """
     content = b"data"
     mock_s3_open.return_value.__enter__ = MagicMock(return_value=BytesIO(content))
     mock_s3_open.return_value.__exit__ = MagicMock(return_value=False)

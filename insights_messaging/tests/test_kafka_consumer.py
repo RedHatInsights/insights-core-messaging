@@ -24,7 +24,12 @@ from insights_messaging.consumers.kafka import update_archive_context_ids
 
 
 def test_update_context_ids_sets_fields():
-    """Verify that update_archive_context_ids sets request_id and inventory_id."""
+    """update_archive_context_ids must extract request_id and inventory_id from the payload.
+
+    These IDs are injected into every log message via ArchiveContextIdsInjectingFilter,
+    enabling correlation of log lines to specific archive processing requests
+    across distributed services.
+    """
     payload = {
         "platform_metadata": {"request_id": "req-123"},
         "host": {"id": "host-456"},
@@ -38,7 +43,12 @@ def test_update_context_ids_sets_fields():
 
 
 def test_update_context_ids_handles_missing_keys():
-    """Verify that update_archive_context_ids handles missing optional keys."""
+    """update_archive_context_ids must not set context fields when payload keys are absent.
+
+    Some messages may have empty platform_metadata or host dicts (e.g.
+    internal test messages).  The function must not crash or inject
+    None/empty values into the context, as that would pollute log output.
+    """
     payload = {
         "platform_metadata": {},
         "host": {},
@@ -52,14 +62,23 @@ def test_update_context_ids_handles_missing_keys():
 
 
 def test_update_context_ids_noop_for_none():
-    """Verify that update_archive_context_ids is safe with None payload."""
+    """update_archive_context_ids must be a safe no-op when payload is None.
+
+    The Kafka consumer may receive tombstone messages or deserialization
+    failures that result in a None payload.  The function must not raise.
+    """
     archive_context_var.set({})
     update_archive_context_ids(None)
     assert archive_context_var.get() == {}, "Context should remain empty for None payload"
 
 
 def test_update_context_ids_noop_for_missing_structure():
-    """Verify safety when payload lacks platform_metadata or host."""
+    """update_archive_context_ids must handle payloads missing expected top-level keys.
+
+    Messages from different Kafka topics may have different schemas.
+    When platform_metadata or host keys are absent, the function must
+    leave the context unchanged rather than raising KeyError.
+    """
     archive_context_var.set({})
     update_archive_context_ids({"other_key": "value"})
     assert archive_context_var.get() == {}, (
@@ -73,7 +92,13 @@ def test_update_context_ids_noop_for_missing_structure():
 
 
 def test_filter_injects_context_ids():
-    """Verify that the logging filter injects context IDs into log records."""
+    """ArchiveContextIdsInjectingFilter must copy context IDs onto log records.
+
+    The logging filter reads request_id and inventory_id from the
+    thread-local ContextVar and sets them as attributes on each
+    LogRecord.  Log formatters then include these IDs in output,
+    enabling log correlation across services.
+    """
     archive_context_var.set(
         {
             "request_id": "req-abc",
@@ -101,7 +126,13 @@ def test_filter_injects_context_ids():
 
 
 def test_filter_handles_empty_context():
-    """Verify that the filter works when context is empty."""
+    """ArchiveContextIdsInjectingFilter must not add attributes when context is empty.
+
+    Between messages (or during startup), the ContextVar is empty.
+    The filter must still return True (pass the record) and must not
+    add request_id/inventory_id attributes with None values — that
+    would cause format string errors in log formatters.
+    """
     archive_context_var.set({})
 
     f = ArchiveContextIdsInjectingFilter()
@@ -126,7 +157,13 @@ def test_filter_handles_empty_context():
 
 
 def test_stats_to_metrics_parses_json(kafka_metrics):
-    """Verify that stats_to_metrics correctly parses and records stats."""
+    """stats_to_metrics must parse the JSON stats blob and set rebalance count.
+
+    confluent-kafka emits a JSON stats string via the stats_cb callback
+    every statistics.interval.ms.  KafkaMetrics parses this and updates
+    Prometheus gauges.  This test verifies the rebalance count gauge is
+    set from cgrp.rebalance_cnt.
+    """
     stats = {
         "type": "consumer",
         "client_id": "test-client-1",
@@ -148,7 +185,12 @@ def test_stats_to_metrics_parses_json(kafka_metrics):
 
 
 def test_stats_to_metrics_sets_reply_queue(kafka_metrics):
-    """Verify that reply queue size is recorded correctly."""
+    """stats_to_metrics must record the reply queue size from the stats blob.
+
+    The reply queue (replyq) indicates how many responses are waiting
+    to be delivered to the application.  A growing queue signals that
+    the consumer is falling behind, making this a key health metric.
+    """
     stats = {
         "type": "consumer",
         "client_id": "test-client-2",
@@ -169,7 +211,12 @@ def test_stats_to_metrics_sets_reply_queue(kafka_metrics):
 
 
 def test_stats_to_metrics_sets_rebalance_age(kafka_metrics):
-    """Verify that rebalance age is recorded correctly."""
+    """stats_to_metrics must record the rebalance age from the stats blob.
+
+    Rebalance age (cgrp.rebalance_age) indicates milliseconds since the
+    last rebalance.  Frequent rebalances (low age) suggest consumer
+    instability — this metric is used for alerting.
+    """
     stats = {
         "type": "consumer",
         "client_id": "test-client-3",
