@@ -13,15 +13,10 @@ from insights_messaging.publishers.cli import StdOut
 # ---------------------------------------------------------------------------
 
 
-def test_publisher_publish_is_noop():
-    """Verify that the base Publisher.publish() does not raise."""
+def test_publisher_noop_methods():
+    """Verify that the base Publisher.publish() and error() do not raise."""
     pub = Publisher()
     pub.publish("input_msg", "response")
-
-
-def test_publisher_error_is_noop():
-    """Verify that the base Publisher.error() does not raise."""
-    pub = Publisher()
     pub.error("input_msg", RuntimeError("test"))
 
 
@@ -31,18 +26,7 @@ def test_publisher_error_is_noop():
 
 
 def test_stdout_publish_prints_results(capsys):
-    """Verify that StdOut.publish() prints the results to stdout."""
-    pub = StdOut()
-    pub.publish("input_msg", "test results")
-
-    captured = capsys.readouterr()
-    assert "test results" in captured.out, (
-        f"StdOut.publish() should print results to stdout, got: {captured.out!r}"
-    )
-
-
-def test_stdout_publish_multiple_calls(capsys):
-    """Verify that StdOut.publish() works correctly across multiple calls."""
+    """Verify that StdOut.publish() prints results to stdout."""
     pub = StdOut()
     pub.publish("msg1", "result1")
     pub.publish("msg2", "result2")

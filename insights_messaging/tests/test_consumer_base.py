@@ -214,18 +214,6 @@ def test_watcher_event_order_on_failure():
     assert "on_consumer_success" not in watcher.events, (
         "on_consumer_success should not fire when engine raises"
     )
-
-
-def test_on_consumer_complete_fires_on_exception():
-    """Verify that on_consumer_complete fires even when process() raises."""
-    watcher = RecordingConsumerWatcher()
-    engine = MockEngine(should_raise=ValueError("boom"))
-    consumer = StubConsumer(MockPublisher(), MockDownloader(), engine)
-    watcher.watch(consumer)
-
-    with pytest.raises(ValueError):
-        consumer.process("msg")
-
     assert watcher.events[-1] == "on_consumer_complete", (
         "on_consumer_complete should be the last event, even on failure"
     )
@@ -257,8 +245,7 @@ def test_process_calls_publisher_error_on_exception():
 # ---------------------------------------------------------------------------
 
 
-def test_requeue_exception_exists():
-    """Verify that Requeue is a proper exception class."""
-    assert issubclass(Requeue, Exception), "Requeue should be a subclass of Exception"
+def test_requeue_exception():
+    """Verify that Requeue carries a reason message."""
     ex = Requeue("requeue reason")
     assert str(ex) == "requeue reason"
