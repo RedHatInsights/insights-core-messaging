@@ -71,7 +71,13 @@ def _make_consumer(watcher):
 
 
 def test_consumer_watcher_success_lifecycle():
-    """Verify watcher events fire in correct order on successful processing."""
+    """Consumer watcher events must fire in the correct order on success.
+
+    This is an integration test that runs Consumer.process() end-to-end
+    with mocked dependencies and verifies the full watcher event sequence.
+    The order matters because watchers use it to compute durations
+    (e.g. time between on_recv and on_consumer_complete).
+    """
     watcher = RecordingConsumerWatcher()
     consumer = _make_consumer(watcher)
 
@@ -89,7 +95,12 @@ def test_consumer_watcher_success_lifecycle():
 
 
 def test_consumer_watcher_failure_lifecycle():
-    """Verify watcher events fire correctly when processing fails."""
+    """Consumer watcher events must follow the failure path when the engine raises.
+
+    on_consumer_failure must fire so watchers can increment error counters.
+    on_consumer_success must NOT fire — mixing signals would corrupt metrics.
+    on_consumer_complete must still fire for cleanup.
+    """
     watcher = RecordingConsumerWatcher()
     consumer = _make_consumer(watcher)
 
@@ -108,7 +119,12 @@ def test_consumer_watcher_failure_lifecycle():
 
 
 def test_consumer_watcher_complete_fires_on_failure():
-    """Verify on_consumer_complete fires even when processing raises."""
+    """on_consumer_complete must fire even when download fails.
+
+    This tests a different failure point than test_consumer_watcher_failure_lifecycle
+    (download vs engine).  on_consumer_complete acts as a finally block —
+    watchers that track in-flight message counts depend on it always firing.
+    """
     watcher = RecordingConsumerWatcher()
     consumer = _make_consumer(watcher)
 
@@ -130,7 +146,13 @@ def test_consumer_watcher_complete_fires_on_failure():
 
 
 def test_engine_watcher_default_methods_are_noop():
-    """Verify EngineWatcher methods are safe no-ops by default."""
+    """EngineWatcher default methods must be safe no-ops.
+
+    Concrete watchers override only the events they care about.
+    Unoverridden methods must not raise when called by the engine's
+    fire() dispatch, otherwise adding a new event would break all
+    existing watchers.
+    """
     watcher = EngineWatcher()
     # These should not raise
     watcher.watch_broker(MagicMock())
@@ -141,7 +163,11 @@ def test_engine_watcher_default_methods_are_noop():
 
 
 def test_consumer_watcher_default_methods_are_noop():
-    """Verify ConsumerWatcher methods are safe no-ops by default."""
+    """ConsumerWatcher default methods must be safe no-ops.
+
+    Same rationale as test_engine_watcher_default_methods_are_noop —
+    concrete consumer watchers override only the events they need.
+    """
     watcher = ConsumerWatcher()
     # These should not raise
     watcher.on_recv("msg")
@@ -158,7 +184,13 @@ def test_consumer_watcher_default_methods_are_noop():
 
 
 def test_multiple_watchers_all_receive_events():
-    """Verify that multiple watchers all receive events."""
+    """All registered watchers must receive events from Consumer.process().
+
+    In production, a consumer typically has both a stats watcher and a
+    logging watcher.  This test verifies that the event fan-out works
+    correctly through the full Consumer.process() lifecycle, not just
+    through Watched.fire() in isolation.
+    """
     watcher1 = RecordingConsumerWatcher()
     watcher2 = RecordingConsumerWatcher()
     consumer = _make_consumer(watcher1)
@@ -175,7 +207,12 @@ def test_multiple_watchers_all_receive_events():
 
 
 def test_failing_watcher_does_not_block_others():
-    """Verify a watcher exception doesn't prevent other watchers from firing."""
+    """A watcher exception must not prevent other watchers from receiving events.
+
+    This tests watcher isolation at the Watched.fire() level with
+    realistic watcher objects.  If isolation fails, a bug in one
+    watcher could silently disable all metrics and logging.
+    """
     failing_watcher = ConsumerWatcher()
     failing_watcher.on_recv = MagicMock(side_effect=RuntimeError("watcher error"))
 

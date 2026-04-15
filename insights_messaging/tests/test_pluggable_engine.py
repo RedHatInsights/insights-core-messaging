@@ -69,7 +69,14 @@ service:
 
 
 def test_configs_engine():
-    """Should use the specified CustomEngine"""
+    """AppBuilder must instantiate the engine class specified in config.
+
+    When the service.engine.name key is present, AppBuilder loads that
+    class instead of the default Engine.  This allows deployments to
+    use custom engines with specialized processing logic (e.g. upload
+    engines, stat-collecting engines).  The engine's kwargs (formatter,
+    timeout, tmp_dir) must also be applied.
+    """
     app = AppBuilder(CONFIG1).build_app()
     assert isinstance(app.engine, CustomEngine)
     assert app.engine.Formatter is MockFormat
@@ -78,7 +85,13 @@ def test_configs_engine():
 
 
 def test_config1_engine():
-    """Should use the default insights_messaging.engine.Engine"""
+    """AppBuilder must use the default Engine when no engine class is specified.
+
+    When the config omits the service.engine section, the builder falls
+    back to insights_messaging.engine.Engine and reads format,
+    extract_timeout, and extract_tmp_dir from the top level of the
+    service section.  This is the common case for simple deployments.
+    """
     app = AppBuilder(CONFIG2).build_app()
     assert isinstance(app.engine, Engine) and not isinstance(app.engine, CustomEngine)
     assert app.engine.Formatter is MockFormat

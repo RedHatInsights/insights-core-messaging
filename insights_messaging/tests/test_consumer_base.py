@@ -128,7 +128,12 @@ class StubConsumer(Consumer):
 
 
 def test_process_publishes_results():
-    """Verify that process() publishes engine results on success."""
+    """Consumer.process() must forward engine results to the publisher.
+
+    The consumer orchestrates download -> engine -> publish.  This test
+    verifies the final step: that the results returned by the engine are
+    passed to publisher.publish() together with the original input message.
+    """
     publisher = MockPublisher()
     consumer = StubConsumer(publisher, MockDownloader(), MockEngine())
 
@@ -143,7 +148,11 @@ def test_process_publishes_results():
 
 
 def test_process_downloads_url():
-    """Verify that process() downloads from the URL returned by get_url()."""
+    """Consumer.process() must download the archive from the URL provided by get_url().
+
+    Subclasses override get_url() to extract the download location from the
+    incoming message.  This test ensures the downloader receives that URL.
+    """
     downloader = MockDownloader()
     consumer = StubConsumer(MockPublisher(), downloader, MockEngine())
 
@@ -155,7 +164,12 @@ def test_process_downloads_url():
 
 
 def test_process_passes_broker_to_engine():
-    """Verify that process() creates a broker and passes it to the engine."""
+    """Consumer.process() must create a broker and pass it with the archive path to the engine.
+
+    The broker carries component results and exceptions through the
+    insights-core evaluation pipeline.  The engine needs both the broker
+    and the local path to the extracted archive.
+    """
     engine = MockEngine()
     consumer = StubConsumer(MockPublisher(), MockDownloader(), engine)
 
@@ -173,10 +187,12 @@ def test_process_passes_broker_to_engine():
 
 
 def test_watcher_event_order_on_success():
-    """Verify the order of watcher events during successful processing.
+    """Watcher events must fire in a deterministic order on the happy path.
 
-    The expected order is: on_recv -> on_download -> on_process ->
-    on_consumer_success -> on_consumer_complete.
+    Watchers (metrics, logging, stats) depend on a stable event sequence
+    to track processing state correctly.  The expected order is:
+    on_recv -> on_download -> on_process -> on_consumer_success ->
+    on_consumer_complete.
     """
     watcher = RecordingConsumerWatcher()
     consumer = StubConsumer(MockPublisher(), MockDownloader(), MockEngine())
@@ -194,10 +210,13 @@ def test_watcher_event_order_on_success():
 
 
 def test_watcher_event_order_on_failure():
-    """Verify the order of watcher events when engine processing fails.
+    """Watcher events must follow the failure path when the engine raises.
 
-    The expected order is: on_recv -> on_download -> on_consumer_failure ->
-    on_consumer_complete.  on_process and on_consumer_success must NOT fire.
+    on_consumer_failure must fire so watchers can record the error.
+    on_consumer_complete must always be the last event (like a finally
+    block) so cleanup watchers run regardless of outcome.
+    on_consumer_success must NOT fire — mixing success and failure
+    signals would corrupt metrics.
     """
     watcher = RecordingConsumerWatcher()
     engine = MockEngine(should_raise=RuntimeError("engine error"))
@@ -225,7 +244,13 @@ def test_watcher_event_order_on_failure():
 
 
 def test_process_calls_publisher_error_on_exception():
-    """Verify that process() calls publisher.error() when an exception occurs."""
+    """Consumer.process() must notify the publisher about engine failures.
+
+    publisher.error() is the mechanism for reporting processing failures
+    back to the message broker (e.g. dead-letter queue, error topic).
+    The original message and exception must be passed through so the
+    publisher can decide how to handle the failure.
+    """
     publisher = MockPublisher()
     error = RuntimeError("engine failure")
     engine = MockEngine(should_raise=error)
@@ -246,6 +271,11 @@ def test_process_calls_publisher_error_on_exception():
 
 
 def test_requeue_exception():
-    """Verify that Requeue carries a reason message."""
+    """Requeue exception must carry a reason string for diagnostic logging.
+
+    When a consumer cannot handle a message (e.g. transient dependency
+    failure), it raises Requeue to signal that the message should be
+    retried or routed to a different queue.
+    """
     ex = Requeue("requeue reason")
     assert str(ex) == "requeue reason"
