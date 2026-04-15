@@ -20,10 +20,10 @@ def test_simple_substitution():
     assert Template("hello $${who}").substitute() == "hello ${who}"
 
     # missing keys
-    with pytest.raises(Exception):
+    with pytest.raises(KeyError):
         Template("hello $who").substitute()
 
-    with pytest.raises(Exception):
+    with pytest.raises(KeyError):
         Template("hello ${who}").substitute()
 
 
@@ -33,8 +33,8 @@ def test_default_substitution():
     assert Template("hello ${who:}").substitute() == "hello "
 
     # defaults not allowed outside of braces
-    with pytest.raises(Exception):
-        assert Template("hello $who:world").substitute()
+    with pytest.raises(KeyError):
+        Template("hello $who:world").substitute()
 
 
 def test_simple_safe_substitution():

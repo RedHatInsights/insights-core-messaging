@@ -18,6 +18,7 @@ def custom_log_config():
     def inner(config):
         config["custom_log_stuff"] = "custom config here"
         return config
+
     return inner
 
 
