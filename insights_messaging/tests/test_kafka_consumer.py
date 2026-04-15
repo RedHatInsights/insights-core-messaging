@@ -23,8 +23,8 @@ from insights_messaging.consumers.kafka import update_archive_context_ids
 # ---------------------------------------------------------------------------
 
 
-def test_update_context_ids_sets_request_id():
-    """Verify that update_archive_context_ids sets request_id from payload."""
+def test_update_context_ids_sets_fields():
+    """Verify that update_archive_context_ids sets request_id and inventory_id."""
     payload = {
         "platform_metadata": {"request_id": "req-123"},
         "host": {"id": "host-456"},
@@ -33,18 +33,6 @@ def test_update_context_ids_sets_request_id():
 
     ctx = archive_context_var.get()
     assert ctx["request_id"] == "req-123", "request_id should be extracted from platform_metadata"
-    archive_context_var.set({})  # cleanup
-
-
-def test_update_context_ids_sets_inventory_id():
-    """Verify that update_archive_context_ids sets inventory_id from payload."""
-    payload = {
-        "platform_metadata": {"request_id": "req-123"},
-        "host": {"id": "host-456"},
-    }
-    update_archive_context_ids(payload)
-
-    ctx = archive_context_var.get()
     assert ctx["inventory_id"] == "host-456", "inventory_id should be extracted from host.id"
     archive_context_var.set({})  # cleanup
 

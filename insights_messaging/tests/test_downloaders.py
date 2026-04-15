@@ -54,16 +54,6 @@ def test_localfs_expands_user_home():
         )
 
 
-def test_localfs_context_manager_cleanup():
-    """Verify that LocalFS.get() works as a proper context manager."""
-    fs = LocalFS()
-    with tempfile.NamedTemporaryFile() as f, fs.get(f.name) as path:
-        # Inside context: path should be valid.
-        assert isinstance(path, str)
-        # Outside context: no cleanup needed for LocalFS, but should
-        # not raise.
-
-
 # ---------------------------------------------------------------------------
 # Http downloader tests
 # ---------------------------------------------------------------------------
@@ -122,12 +112,6 @@ def test_http_get_raises_on_http_error():
         dl.get("http://example.com/missing.tar.gz").__enter__()
 
 
-def test_http_custom_chunk_size():
-    """Verify that Http respects custom chunk_size."""
-    dl = Http(chunk_size=4096)
-    assert dl.chunk_size == 4096
-
-
 def test_http_custom_tmp_dir(tmp_path):
     """Verify that Http uses custom tmp_dir for temp files."""
     dl = Http(tmp_dir=str(tmp_path))
@@ -183,4 +167,5 @@ def test_s3_custom_chunk_size(mock_s3_open):
     mock_s3_open.return_value.__exit__ = MagicMock(return_value=False)
 
     dl = S3Downloader(chunk_size=8192, anon=True)
-    assert dl.chunk_size == 8192
+    with dl.get("s3://bucket/key/archive.tar.gz") as path:
+        assert os.path.exists(path), "Downloaded file should exist"

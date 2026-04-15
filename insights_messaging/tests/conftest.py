@@ -12,7 +12,7 @@ from insights_messaging.consumers.kafka import KafkaMetrics
 _kafka_metrics_instance = KafkaMetrics()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def kafka_metrics():
     """Provide a shared KafkaMetrics instance.
 
