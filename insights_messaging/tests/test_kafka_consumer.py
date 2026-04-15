@@ -12,6 +12,8 @@ connection and is tested via integration tests, not here.
 import json
 import logging
 
+import pytest
+
 from insights_messaging.consumers import (
     ArchiveContextIdsInjectingFilter,
     archive_context_var,
@@ -52,29 +54,23 @@ def test_update_context_ids_sets_fields():
     archive_context_var.set({})  # cleanup
 
 
-def test_update_context_ids_noop_for_none():
-    """update_archive_context_ids must be a safe no-op when payload is None.
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(None, id="none_payload"),
+        pytest.param({"other_key": "value"}, id="missing_structure"),
+    ],
+)
+def test_update_context_ids_noop_for_invalid_payload(payload):
+    """update_archive_context_ids must be a safe no-op for invalid payloads.
 
-    The Kafka consumer may receive tombstone messages or deserialization
-    failures that result in a None payload.  The function must not raise.
+    The Kafka consumer may receive tombstone messages (None), deserialization
+    failures, or messages from different topics with different schemas.
+    The function must leave the context unchanged rather than raising.
     """
     archive_context_var.set({})
-    update_archive_context_ids(None)
-    assert archive_context_var.get() == {}, "Context should remain empty for None payload"
-
-
-def test_update_context_ids_noop_for_missing_structure():
-    """update_archive_context_ids must handle payloads missing expected top-level keys.
-
-    Messages from different Kafka topics may have different schemas.
-    When platform_metadata or host keys are absent, the function must
-    leave the context unchanged rather than raising KeyError.
-    """
-    archive_context_var.set({})
-    update_archive_context_ids({"other_key": "value"})
-    assert archive_context_var.get() == {}, (
-        "Context should remain empty when payload lacks required keys"
-    )
+    update_archive_context_ids(payload)
+    assert archive_context_var.get() == {}, f"Context should remain empty for payload {payload!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -147,13 +143,36 @@ def test_filter_handles_empty_context():
 # ---------------------------------------------------------------------------
 
 
-def test_stats_to_metrics_parses_json(kafka_metrics):
-    """stats_to_metrics must parse the JSON stats blob and set rebalance count.
+@pytest.mark.parametrize(
+    ("gauge_attr", "label_kwargs", "expected"),
+    [
+        pytest.param(
+            "KAFKA_CONSUMER_REBALANCE_COUNT",
+            {"type": "consumer", "client_id": "test-client-1", "state": "up"},
+            42,
+            id="rebalance_count",
+        ),
+        pytest.param(
+            "KAFKA_CONSUMER_REPLY_QUEUE_SIZE",
+            {"type": "consumer", "client_id": "test-client-1"},
+            7,
+            id="reply_queue_size",
+        ),
+        pytest.param(
+            "KAFKA_CONSUMER_REBALANCE_AGE",
+            {"type": "consumer", "client_id": "test-client-1"},
+            5000,
+            id="rebalance_age",
+        ),
+    ],
+)
+def test_stats_to_metrics_sets_gauge(kafka_metrics, gauge_attr, label_kwargs, expected):
+    """stats_to_metrics must parse the JSON stats blob and update Prometheus gauges.
 
     confluent-kafka emits a JSON stats string via the stats_cb callback
-    every statistics.interval.ms.  KafkaMetrics parses this and updates
-    Prometheus gauges.  This test verifies the rebalance count gauge is
-    set from cgrp.rebalance_cnt.
+    every statistics.interval.ms.  KafkaMetrics parses this and sets
+    gauges for rebalance count, rebalance age, and reply queue size.
+    These metrics drive alerting for consumer instability and lag.
     """
     stats = {
         "type": "consumer",
@@ -168,60 +187,6 @@ def test_stats_to_metrics_parses_json(kafka_metrics):
 
     kafka_metrics.stats_to_metrics(json.dumps(stats))
 
-    # Verify the rebalance count was set correctly
-    sample = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT.labels(
-        type="consumer", client_id="test-client-1", state="up"
-    )._value.get()
-    assert sample == 42, f"Rebalance count should be 42, got {sample}"
-
-
-def test_stats_to_metrics_sets_reply_queue(kafka_metrics):
-    """stats_to_metrics must record the reply queue size from the stats blob.
-
-    The reply queue (replyq) indicates how many responses are waiting
-    to be delivered to the application.  A growing queue signals that
-    the consumer is falling behind, making this a key health metric.
-    """
-    stats = {
-        "type": "consumer",
-        "client_id": "test-client-2",
-        "cgrp": {
-            "rebalance_cnt": 0,
-            "rebalance_age": 0,
-            "state": "up",
-        },
-        "replyq": 15,
-    }
-
-    kafka_metrics.stats_to_metrics(json.dumps(stats))
-
-    sample = kafka_metrics.KAFKA_CONSUMER_REPLY_QUEUE_SIZE.labels(
-        type="consumer", client_id="test-client-2"
-    )._value.get()
-    assert sample == 15, f"Reply queue size should be 15, got {sample}"
-
-
-def test_stats_to_metrics_sets_rebalance_age(kafka_metrics):
-    """stats_to_metrics must record the rebalance age from the stats blob.
-
-    Rebalance age (cgrp.rebalance_age) indicates milliseconds since the
-    last rebalance.  Frequent rebalances (low age) suggest consumer
-    instability — this metric is used for alerting.
-    """
-    stats = {
-        "type": "consumer",
-        "client_id": "test-client-3",
-        "cgrp": {
-            "rebalance_cnt": 1,
-            "rebalance_age": 12345,
-            "state": "up",
-        },
-        "replyq": 0,
-    }
-
-    kafka_metrics.stats_to_metrics(json.dumps(stats))
-
-    sample = kafka_metrics.KAFKA_CONSUMER_REBALANCE_AGE.labels(
-        type="consumer", client_id="test-client-3"
-    )._value.get()
-    assert sample == 12345, f"Rebalance age should be 12345, got {sample}"
+    gauge = getattr(kafka_metrics, gauge_attr)
+    sample = gauge.labels(**label_kwargs)._value.get()
+    assert sample == expected, f"{gauge_attr} should be {expected}, got {sample}"

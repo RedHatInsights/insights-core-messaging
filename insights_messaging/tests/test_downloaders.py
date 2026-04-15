@@ -19,34 +19,27 @@ from insights_messaging.downloaders.s3 import S3Downloader
 # ---------------------------------------------------------------------------
 
 
-@patch.dict(os.environ, {}, clear=True)
-def test_http_no_auth_by_default():
-    """Http must not set session auth when credential env vars are absent.
+@pytest.mark.parametrize(
+    ("env_vars", "expected_auth"),
+    [
+        pytest.param({}, None, id="no_credentials"),
+        pytest.param(
+            {"httpfs_username": "user", "httpfs_password": "pass"},
+            ("user", "pass"),
+            id="with_credentials",
+        ),
+    ],
+)
+def test_http_auth_from_env(env_vars, expected_auth):
+    """Http must configure session auth based on httpfs_username/httpfs_password env vars.
 
-    In environments without authentication (e.g. internal services behind
-    a VPN), sending credentials would be incorrect.  The Http downloader
-    reads httpfs_username/httpfs_password from the environment and must
-    leave session.auth as None when they are not set.
+    When both env vars are present, session.auth should be a (username,
+    password) tuple for Basic auth.  When absent, auth must be None —
+    sending credentials to unauthenticated services would be incorrect.
     """
-    with patch.dict(os.environ, {}, clear=True):
+    with patch.dict(os.environ, env_vars, clear=True):
         dl = Http()
-        assert dl.session.auth is None, (
-            "Http should not set auth when httpfs_username/httpfs_password are unset"
-        )
-
-
-@patch.dict(os.environ, {"httpfs_username": "user", "httpfs_password": "pass"})
-def test_http_sets_auth_from_env():
-    """Http must configure session auth from httpfs_username/httpfs_password env vars.
-
-    When both env vars are present, session.auth should be set as a
-    (username, password) tuple so that every HTTP request includes
-    Basic auth headers.
-    """
-    dl = Http()
-    assert dl.session.auth == ("user", "pass"), (
-        "Http should set session.auth from httpfs_username/httpfs_password env vars"
-    )
+        assert dl.session.auth == expected_auth
 
 
 def test_http_get_downloads_to_temp_file():
