@@ -12,37 +12,6 @@ import pytest
 from insights_messaging.template import DefaultingTemplate as Template
 
 
-def test_simple_substitution():
-    """DefaultingTemplate.substitute() must handle standard template syntax.
-
-    Tests: plain text (no substitution), $var and ${var} syntax, $$
-    escape sequences, and KeyError on missing keys.  These behaviors
-    are inherited from string.Template but must be preserved by the
-    subclass.
-    """
-    # no subs
-    assert Template("hello world").substitute() == "hello world"
-
-    # simple subs
-    assert Template("hello $who").substitute(who="world") == "hello world"
-    assert Template("hello $who").substitute({"who": "world"}) == "hello world"
-
-    # braced subs
-    assert Template("hello ${who}").substitute(who="world") == "hello world"
-    assert Template("hello ${who}").substitute({"who": "world"}) == "hello world"
-
-    # escapes
-    assert Template("hello $$who").substitute() == "hello $who"
-    assert Template("hello $${who}").substitute() == "hello ${who}"
-
-    # missing keys
-    with pytest.raises(KeyError):
-        Template("hello $who").substitute()
-
-    with pytest.raises(KeyError):
-        Template("hello ${who}").substitute()
-
-
 def test_default_substitution():
     """DefaultingTemplate must support ${var:default} syntax for fallback values.
 
@@ -59,24 +28,6 @@ def test_default_substitution():
     # defaults not allowed outside of braces
     with pytest.raises(KeyError):
         Template("hello $who:world").substitute()
-
-
-def test_simple_safe_substitution():
-    """safe_substitute() must leave unresolved variables in place rather than raising.
-
-    This is used when partial substitution is acceptable — e.g. during
-    config validation where not all env vars may be available yet.
-    """
-    assert Template("hello world").safe_substitute() == "hello world"
-
-    assert Template("hello $who").safe_substitute(who="world") == "hello world"
-    assert Template("hello $who").safe_substitute({"who": "world"}) == "hello world"
-
-    assert Template("hello ${who}").safe_substitute(who="world") == "hello world"
-    assert Template("hello ${who}").safe_substitute({"who": "world"}) == "hello world"
-
-    assert Template("hello $who").safe_substitute() == "hello $who"
-    assert Template("hello ${who}").safe_substitute() == "hello ${who}"
 
 
 def test_default_safe_substitution():

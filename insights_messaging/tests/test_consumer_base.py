@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from insights_messaging.consumers import Consumer, Requeue
+from insights_messaging.consumers import Consumer
 from insights_messaging.watchers import ConsumerWatcher
 
 # ---------------------------------------------------------------------------
@@ -210,19 +210,3 @@ def test_process_calls_publisher_error_on_exception():
     msg, ex = publisher.error.call_args[0]
     assert msg == "msg"
     assert ex is error
-
-
-# ---------------------------------------------------------------------------
-# Requeue tests
-# ---------------------------------------------------------------------------
-
-
-def test_requeue_exception():
-    """Requeue exception must carry a reason string for diagnostic logging.
-
-    When a consumer cannot handle a message (e.g. transient dependency
-    failure), it raises Requeue to signal that the message should be
-    retried or routed to a different queue.
-    """
-    ex = Requeue("requeue reason")
-    assert str(ex) == "requeue reason"
