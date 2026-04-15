@@ -154,7 +154,7 @@ def test_stats_to_metrics_parses_json(kafka_metrics):
 
     # Verify the rebalance count was set correctly
     sample = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT.labels(
-        type="consumer", client_id="test-client-1", state="up"
+        type="consumer", client_id="test-client-1"
     )._value.get()
     assert sample == 42, f"Rebalance count should be 42, got {sample}"
 
