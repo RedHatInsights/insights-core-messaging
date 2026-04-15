@@ -27,14 +27,44 @@ def update_archive_context_ids(payload):
         archive_context_var.set(payload_id_dict)
 
 class KafkaMetrics():
+    """Prometheus metrics for Kafka consumer stats.
+
+    These metrics are populated by the confluent-kafka stats_cb callback,
+    which fires every `statistics.interval.ms` (default 10s).
+
+    CCXDEV-15098: The `state` label was intentionally removed from
+    KAFKA_CONSUMER_REBALANCE_COUNT. Previously, labelnames included
+    ['type', 'client_id', 'state'], where `state` changed over time
+    (e.g. "up", "rebalancing", "init"). Each unique label combination
+    creates a new child metric object stored permanently in
+    prometheus_client's internal `_metrics` dict — these are never
+    garbage collected. Since stats_cb fires every 10s, new label
+    combinations accumulated over time, causing ~1 MB/hr of memory
+    growth. Removing `state` from the labelnames keeps the metric
+    cardinality fixed (one child per type+client_id pair).
+
+    Consumer state is now tracked separately via KAFKA_CONSUMER_STATE,
+    which also uses fixed-cardinality labels (type + client_id only).
+    """
     def __init__(self):
+        # Rebalance count — uses fixed labels only (type + client_id).
+        # Do NOT add 'state' here; see class docstring for explanation.
         self.KAFKA_CONSUMER_REBALANCE_COUNT = Gauge(
             'kafka_consumer_rebalance_count',
             'Number of rebalances for this consumer group',
             labelnames=[
                 'type',
-                'client_id',
-                'state'
+                'client_id'
+            ]
+        )
+
+        # Consumer state — tracked separately with fixed-cardinality labels.
+        self.KAFKA_CONSUMER_STATE = Gauge(
+            'kafka_consumer_state',
+            'Current state of the consumer group (encoded as string info label)',
+            labelnames=[
+                'type',
+                'client_id'
             ]
         )
 
@@ -69,8 +99,7 @@ class KafkaMetrics():
 
         self.KAFKA_CONSUMER_REBALANCE_COUNT.labels(
             type=stat_type,
-            client_id=client_id,
-            state=stats.get('cgrp').get('state')
+            client_id=client_id
         ).set(stats.get('cgrp').get('rebalance_cnt'))
 
         self.KAFKA_CONSUMER_REBALANCE_AGE.labels(

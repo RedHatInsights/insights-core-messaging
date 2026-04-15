@@ -2,7 +2,9 @@
 This test module ensures default and custom engines load correctly from
 configuration.
 """
+
 import yaml
+
 from insights_messaging.appbuilder import AppBuilder
 from insights_messaging.engine import Engine
 
@@ -29,7 +31,7 @@ service:
     engine:
         name: insights_messaging.tests.test_pluggable_engine.CustomEngine
         kwargs:
-            format: insights_messaging.tests.test_pluggable_engine.MockFormat
+            formatter: insights_messaging.tests.test_pluggable_engine.MockFormat
             extract_timeout: 20
             extract_tmp_dir: ${TMP_DIR:/tmp}
             target_components: []
@@ -67,7 +69,7 @@ service:
 
 
 def test_configs_engine():
-    """ Should use the specified CustomEngine """
+    """Should use the specified CustomEngine"""
     app = AppBuilder(CONFIG1).build_app()
     assert isinstance(app.engine, CustomEngine)
     assert app.engine.Formatter is MockFormat
@@ -76,7 +78,7 @@ def test_configs_engine():
 
 
 def test_config1_engine():
-    """ Should use the default insights_messaging.engine.Engine """
+    """Should use the default insights_messaging.engine.Engine"""
     app = AppBuilder(CONFIG2).build_app()
     assert isinstance(app.engine, Engine) and not isinstance(app.engine, CustomEngine)
     assert app.engine.Formatter is MockFormat

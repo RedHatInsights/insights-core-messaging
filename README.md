@@ -2,6 +2,83 @@ Construct an insights archive processing application by providing a
 configuration file that specifies its components. The building blocks
 are described below. Pypi location: https://pypi.org/project/insights-core-messaging
 
+Testing
+-------
+
+
+### Test Framework
+
+The project uses [pytest](https://docs.pytest.org/) as its test
+framework.  Tests are located in `insights_messaging/tests/` and
+follow standard pytest discovery conventions (files named
+`test_*.py`, functions named `test_*`).
+
+### Running Tests
+
+The project uses [tox](https://tox.wiki/) to run tests across Python
+3.11 and 3.12.  Install tox and run all environments:
+```bash
+pip install tox
+tox -vv
+```
+
+Run a single Python version:
+```bash
+tox -e py311
+```
+
+Run pytest directly (useful during development):
+```bash
+pip install -e .[testing]
+pytest -v --cov=insights_messaging --cov-branch --cov-report=term-missing
+```
+
+### Linting
+
+The project uses [ruff](https://docs.astral.sh/ruff/) for linting and
+formatting via [pre-commit](https://pre-commit.com/).  Install the hooks
+locally:
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+### Test Organization
+
+Tests are organized by the module or feature they validate:
+
+- `test_consumer_base.py` — Consumer.process() lifecycle, watcher events, error handling.
+- `test_defaulting_template.py` — Template substitution with defaults.
+- `test_downloaders.py` — Downloader implementations (LocalFS).
+- `test_get_logging_config.py` — Logging configuration loading.
+- `test_kafka_consumer.py` — Kafka metrics, context IDs, logging filter.
+- `test_pluggable_engine.py` — Engine loading from configuration.
+- `test_publishers.py` — Publisher implementations (base, StdOut).
+- `test_resolve_variables.py` — Environment variable resolution in
+  configuration.
+- `test_watchers.py` — Watcher system (event dispatch, error isolation).
+
+### Writing Tests
+
+Follow these conventions when adding new tests:
+
+1. **File naming**: `test_<module_or_feature>.py`
+2. **Function naming**: `test_<what_is_being_tested>`
+3. **Module docstrings**: Every test file should have a module-level
+   docstring explaining what it covers.
+4. **Assertion messages**: Include descriptive messages in assertions to
+   make failures self-explanatory:
+   ```python
+   assert len(broker.exceptions) == 0, (
+       "broker.exceptions should be empty after process() cleanup, "
+       "found %d entries" % len(broker.exceptions)
+   )
+   ```
+5. **Mock objects**: Embed mock classes directly in the test file rather
+   than using a shared fixtures module.  This keeps tests self-contained
+   and easy to understand.
+
 Engine
 ------
 An engine encapsulates the process of evaluating an archive with insights. It
