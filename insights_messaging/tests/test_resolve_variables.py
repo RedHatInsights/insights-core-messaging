@@ -2,7 +2,6 @@ import yaml
 
 from insights_messaging.appbuilder import resolve_variables
 
-
 CONF = yaml.safe_load(
     """
 plugins:
@@ -80,14 +79,20 @@ service:
 
 
 def test_resolve_variables():
+    """resolve_variables() must substitute env vars and defaults throughout the config tree.
+
+    The function walks the entire nested YAML config and applies
+    DefaultingTemplate substitution to every string value.  Undefined
+    env vars without defaults are left as-is (e.g. $BOOTSTRAP_URL),
+    while ${VAR:default} syntax resolves to the default.  Non-string
+    values (booleans, integers) must pass through unchanged.  Type
+    coercion is also tested: port numbers should become ints.
+    """
     res = resolve_variables(CONF)
     assert res["plugins"]["default_component_enabled"] is True
     assert res["service"]["extract_timeout"] == 10
     assert res["service"]["consumer"]["kwargs"]["bootstrap_server"] == "$BOOTSTRAP_URL"
     assert res["service"]["consumer"]["kwargs"]["security_protocol"] == "SSL"
     assert res["service"]["consumer"]["kwargs"]["ssl_cafile"] == "/mnt/cert.crt"
-    assert (
-        res["service"]["downloader"]["kwargs"]["endpoint"]
-        == "http://minio-service:9000"
-    )
+    assert res["service"]["downloader"]["kwargs"]["endpoint"] == "http://minio-service:9000"
     assert res["service"]["watchers"][0]["kwargs"]["prometheus_port"] == 8002
