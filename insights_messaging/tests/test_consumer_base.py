@@ -138,17 +138,8 @@ def test_process_passes_broker_to_engine():
 # ---------------------------------------------------------------------------
 
 
-def test_watcher_event_order():
-    """Watcher events must fire in a deterministic order on both success and failure paths.
-
-    Watchers (metrics, logging, stats) depend on a stable event sequence
-    to track processing state correctly.  On success the order is:
-    on_recv -> on_download -> on_process -> on_consumer_success ->
-    on_consumer_complete.  On failure on_consumer_failure replaces
-    on_process/on_consumer_success, and on_consumer_complete must still
-    be the last event (like a finally block).
-    """
-    # --- Success path ---
+def test_watcher_success_event_order():
+    """Watcher events must fire in a deterministic order on the success path."""
     watcher = RecordingConsumerWatcher()
     consumer = StubConsumer(MagicMock(), _make_downloader(), _make_engine())
     watcher.watch(consumer)
@@ -163,7 +154,9 @@ def test_watcher_event_order():
         "on_consumer_complete",
     ], f"Unexpected success event order: {watcher.events}"
 
-    # --- Failure path ---
+
+def test_watcher_failure_event_order():
+    """Watcher failure path must fire on_consumer_failure and skip on_consumer_success."""
     watcher = RecordingConsumerWatcher()
     engine = _make_engine(side_effect=RuntimeError("engine error"))
     consumer = StubConsumer(MagicMock(), _make_downloader(), engine)
@@ -172,15 +165,9 @@ def test_watcher_event_order():
     with pytest.raises(RuntimeError, match="engine error"):
         consumer.process("test_msg")
 
-    assert "on_consumer_failure" in watcher.events, (
-        "on_consumer_failure should fire when engine raises"
-    )
-    assert "on_consumer_success" not in watcher.events, (
-        "on_consumer_success should not fire when engine raises"
-    )
-    assert watcher.events[-1] == "on_consumer_complete", (
-        "on_consumer_complete should be the last event, even on failure"
-    )
+    assert "on_consumer_failure" in watcher.events
+    assert "on_consumer_success" not in watcher.events
+    assert watcher.events[-1] == "on_consumer_complete"
 
 
 # ---------------------------------------------------------------------------

@@ -7,9 +7,16 @@ operators to provide fallback values for optional settings without
 requiring every environment variable to be defined.
 """
 
+import string
+
 import pytest
 
 from insights_messaging.template import DefaultingTemplate as Template
+
+
+def test_extends_string_template():
+    """DefaultingTemplate must extend string.Template to inherit standard substitution."""
+    assert issubclass(Template, string.Template)
 
 
 def test_default_substitution():

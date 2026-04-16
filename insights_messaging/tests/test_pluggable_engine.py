@@ -85,13 +85,7 @@ def test_configs_engine():
 
 
 def test_config1_engine():
-    """AppBuilder must use the default Engine when no engine class is specified.
-
-    When the config omits the service.engine section, the builder falls
-    back to insights_messaging.engine.Engine and reads format,
-    extract_timeout, and extract_tmp_dir from the top level of the
-    service section.  This is the common case for simple deployments.
-    """
+    """AppBuilder must use the default Engine when no engine class is specified."""
     app = AppBuilder(CONFIG2).build_app()
     assert isinstance(app.engine, Engine) and not isinstance(app.engine, CustomEngine)
     assert app.engine.Formatter is MockFormat

@@ -15,7 +15,7 @@ follow standard pytest discovery conventions (files named
 ### Running Tests
 
 The project uses [tox](https://tox.wiki/) to run tests across Python
-3.11 and 3.12.  Install tox and run all environments:
+3.11, 3.12, and 3.13.  Install tox and run all environments:
 ```bash
 pip install tox
 tox -vv

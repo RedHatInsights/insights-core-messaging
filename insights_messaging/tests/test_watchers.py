@@ -70,4 +70,4 @@ def test_fire_isolates_watcher_exceptions(caplog):
         watched.fire("on_recv", "msg")
 
     recording.on_recv.assert_called_once_with("msg")
-    assert "watcher failure" in caplog.text, "The failing watcher's exception should be logged"
+    assert "watcher failure" in caplog.text
