@@ -58,20 +58,15 @@ def test_http_get_downloads_to_temp_file():
         patch.object(dl.session, "get", return_value=mock_response),
         dl.get("http://example.com/archive.tar.gz") as path,
     ):
-        assert os.path.exists(path), "Downloaded file should exist"
+        assert os.path.exists(path)
         with open(path, "rb") as f:
-            assert f.read() == content, "File content should match downloaded data"
+            assert f.read() == content
 
     mock_response.raise_for_status.assert_called_once()
 
 
 def test_http_get_raises_on_http_error():
-    """Http.get() must propagate HTTP errors (4xx/5xx) to the caller.
-
-    The consumer relies on exceptions to trigger error handling and
-    watcher notifications.  Silently swallowing HTTP errors would cause
-    the engine to process an empty or corrupt file.
-    """
+    """Http.get() must call raise_for_status() and propagate HTTP errors."""
     dl = Http()
 
     mock_response = MagicMock()
@@ -102,9 +97,7 @@ def test_http_custom_tmp_dir(tmp_path):
         patch.object(dl.session, "get", return_value=mock_response),
         dl.get("http://example.com/file.tar.gz") as path,
     ):
-        assert path.startswith(str(tmp_path)), (
-            "Temp file should be created in the specified tmp_dir"
-        )
+        assert path.startswith(str(tmp_path))
 
 
 @patch("s3fs.S3FileSystem.open")

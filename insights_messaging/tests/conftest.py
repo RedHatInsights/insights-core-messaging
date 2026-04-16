@@ -6,10 +6,6 @@ import pytest
 
 from insights_messaging.consumers.kafka import KafkaMetrics
 
-# All tests that need KafkaMetrics share this
-# instance via the kafka_metrics fixture.
-_kafka_metrics_instance = KafkaMetrics()
-
 
 @pytest.fixture(scope="session")
 def kafka_metrics():
@@ -20,4 +16,4 @@ def kafka_metrics():
     KafkaMetrics registers gauges at __init__ time, we must reuse a
     single instance across all tests.
     """
-    return _kafka_metrics_instance
+    return KafkaMetrics()

@@ -21,6 +21,14 @@ from insights_messaging.consumers import (
 from insights_messaging.consumers.kafka import update_archive_context_ids
 
 
+@pytest.fixture(autouse=True)
+def _reset_archive_context():
+    """Reset archive_context_var before and after each test."""
+    archive_context_var.set({})
+    yield
+    archive_context_var.set({})
+
+
 def _make_log_record(msg="test"):
     return logging.LogRecord(
         name="test",
@@ -33,33 +41,26 @@ def _make_log_record(msg="test"):
     )
 
 
-def test_update_context_ids_sets_fields():
-    """update_archive_context_ids must extract request_id and inventory_id from the payload.
-
-    These IDs are injected into every log message via ArchiveContextIdsInjectingFilter,
-    enabling correlation of log lines to specific archive processing requests
-    across distributed services.  When the payload keys are absent, the
-    context must remain empty to avoid polluting log output.
-    """
-    # --- Present keys ---
-    payload = {
-        "platform_metadata": {"request_id": "req-123"},
-        "host": {"id": "host-456"},
-    }
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        pytest.param(
+            {"platform_metadata": {"request_id": "req-123"}, "host": {"id": "host-456"}},
+            {"request_id": "req-123", "inventory_id": "host-456"},
+            id="present_keys",
+        ),
+        pytest.param(
+            {"platform_metadata": {}, "host": {}},
+            {},
+            id="missing_keys",
+        ),
+    ],
+)
+def test_update_context_ids_sets_fields(payload, expected):
+    """update_archive_context_ids must extract IDs when present, skip when absent."""
     update_archive_context_ids(payload)
-
     ctx = archive_context_var.get()
-    assert ctx["request_id"] == "req-123", "request_id should be extracted from platform_metadata"
-    assert ctx["inventory_id"] == "host-456", "inventory_id should be extracted from host.id"
-    archive_context_var.set({})  # cleanup
-
-    # --- Missing keys ---
-    update_archive_context_ids({"platform_metadata": {}, "host": {}})
-
-    ctx = archive_context_var.get()
-    assert "request_id" not in ctx, "request_id should not be set when missing from payload"
-    assert "inventory_id" not in ctx, "inventory_id should not be set when missing from payload"
-    archive_context_var.set({})  # cleanup
+    assert ctx == expected
 
 
 @pytest.mark.parametrize(
@@ -76,7 +77,6 @@ def test_update_context_ids_noop_for_invalid_payload(payload):
     failures, or messages from different topics with different schemas.
     The function must leave the context unchanged rather than raising.
     """
-    archive_context_var.set({})
     update_archive_context_ids(payload)
     assert archive_context_var.get() == {}, f"Context should remain empty for payload {payload!r}"
 
@@ -99,13 +99,14 @@ def test_filter_injects_context_ids():
     assert result is True
     assert record.request_id == "req-abc"
     assert record.inventory_id == "inv-def"
-    archive_context_var.set({})  # cleanup
 
     # --- Empty context ---
+    archive_context_var.set({})
     record = _make_log_record()
     result = f.filter(record)
     assert result is True
     assert not hasattr(record, "request_id")
+    assert not hasattr(record, "inventory_id")
 
 
 @pytest.mark.parametrize(
@@ -134,10 +135,9 @@ def test_filter_injects_context_ids():
 def test_stats_to_metrics_sets_gauge(kafka_metrics, gauge_attr, label_kwargs, expected):
     """stats_to_metrics must parse the JSON stats blob and update Prometheus gauges.
 
-    confluent-kafka emits a JSON stats string via the stats_cb callback
-    every statistics.interval.ms.  KafkaMetrics parses this and sets
-    gauges for rebalance count, rebalance age, and reply queue size.
-    These metrics drive alerting for consumer instability and lag.
+    Note: kafka_metrics is session-scoped because prometheus_client forbids
+    re-registering gauges.  Tests use the same client_id so gauge values
+    are overwritten, not accumulated.
     """
     stats = {
         "type": "consumer",
