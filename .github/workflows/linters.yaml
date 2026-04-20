@@ -1,3 +1,5 @@
+# This workflow is synced from RedHatInsights/processing-tools automatically; do not edit in downstream repos.
+
 name: Linters
 
 on:
@@ -7,4 +9,4 @@ on:
 
 jobs:
   lint:
-    uses: RedHatInsights/processing-tools/.github/workflows/linters.yaml@v0.1.0
+    uses: RedHatInsights/processing-tools/.github/workflows/linters.yaml@v0.3.1
