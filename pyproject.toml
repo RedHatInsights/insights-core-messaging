@@ -46,18 +46,22 @@ develop = [
     "twine",
     "wheel",
 ]
+
 testing = [
     "confluent-kafka",
     "coverage",
     "pytest",
     "pytest-cov",
 ]
+
 linting = [
     "ruff",
 ]
+
 kafka = [
     "confluent-kafka",
 ]
+
 rabbitmq = [
     "pika",
 ]
@@ -66,6 +70,3 @@ rabbitmq = [
 
 [tool.ruff]
 line-length = 100
-
-[tool.ruff.lint]
-select = ["UP", "F632", "E", "W", "F", "I", "N", "B", "C4", "SIM"]
