@@ -1,0 +1,13 @@
+# This workflow is synced from RedHatInsights/processing-tools automatically; do not edit in downstream repos.
+
+name: Enable auto-merge for bots
+
+on:
+  pull_request:
+
+jobs:
+  bots-automerge:
+    uses: RedHatInsights/processing-tools/.github/workflows/bots-auto-merge.yaml@v0.3.1
+    secrets:
+      OBSINT_PROCESSING_APP_CLIENT_ID: ${{ secrets.OBSINT_PROCESSING_APP_CLIENT_ID }}
+      OBSINT_PROCESSING_APP_PRIVATE_KEY: ${{ secrets.OBSINT_PROCESSING_APP_PRIVATE_KEY }}
