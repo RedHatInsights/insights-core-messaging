@@ -33,6 +33,14 @@
       "separateMajorMinor": false,
       "automerge": true,
       "platformAutomerge": true
+    },
+    {
+      "matchManagers": ["bundler"],
+      "groupName": "Ruby dependencies",
+      "groupSlug": "ruby-deps",
+      "separateMajorMinor": false,
+      "automerge": true,
+      "platformAutomerge": true
     }
   ]
 }
