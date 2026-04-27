@@ -2,6 +2,11 @@ Construct an insights archive processing application by providing a
 configuration file that specifies its components. The building blocks
 are described below. Pypi location: https://pypi.org/project/insights-core-messaging
 
+Projects Using This Library
+---------------------------
+- [insights-ccx-messaging](https://github.com/RedHatInsights/insights-ccx-messaging) — Provides consumers, publishers, downloaders, and engines for processing OpenShift Insights archives from Kafka.
+- [insights-engine](https://github.com/RedHatInsights/insights-engine) — Processes RHEL Advisor archives from Kafka and produces rule results to a Kafka topic.
+
 Engine
 ------
 An engine encapsulates the process of evaluating an archive with insights. It
