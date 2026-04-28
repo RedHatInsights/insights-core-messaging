@@ -1,0 +1,21 @@
+name: Python unit tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  tests:
+    strategy:
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+
+    uses: RedHatInsights/processing-tools/.github/workflows/pytests.yaml@v0.4.1
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    with:
+      python_version: ${{ matrix.python-version }}
+      cov_branch: true
