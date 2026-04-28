@@ -5,6 +5,8 @@ name: Enable auto-merge for bots
 on:
   pull_request:
 
+permissions: {}
+
 jobs:
   bots-automerge:
     uses: RedHatInsights/processing-tools/.github/workflows/bots-auto-merge.yaml@v0.3.1
