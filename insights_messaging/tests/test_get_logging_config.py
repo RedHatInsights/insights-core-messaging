@@ -26,3 +26,4 @@ def test_log_configurator():
     conf = app._get_log_config()
     assert "custom_log_stuff" in conf
     assert "version" in conf
+    assert False, "Forced failure for status checks"
