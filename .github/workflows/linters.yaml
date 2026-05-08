@@ -12,4 +12,4 @@ permissions:
 
 jobs:
   lint:
-    uses: RedHatInsights/processing-tools/.github/workflows/linters.yaml@v0.3.1
+    uses: RedHatInsights/processing-tools/.github/workflows/linters.yaml@v0.4.3
