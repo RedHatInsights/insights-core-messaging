@@ -9,7 +9,7 @@ permissions: {}
 
 jobs:
   bots-automerge:
-    uses: RedHatInsights/processing-tools/.github/workflows/bots-auto-merge.yaml@v0.4.3
+    uses: RedHatInsights/processing-tools/.github/workflows/bots-auto-merge.yaml@v0.4.4
     secrets:
       OBSINT_PROCESSING_APP_CLIENT_ID: ${{ secrets.OBSINT_PROCESSING_APP_CLIENT_ID }}
       OBSINT_PROCESSING_APP_PRIVATE_KEY: ${{ secrets.OBSINT_PROCESSING_APP_PRIVATE_KEY }}
