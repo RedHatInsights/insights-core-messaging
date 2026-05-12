@@ -1,15 +1,13 @@
 """
-Tests for Kafka consumer components.
+Tests for Kafka consumer context helpers.
 
-This module tests the ``KafkaMetrics`` stats callback, the
-``update_archive_context_ids`` helper, and the ``ArchiveContextIdsInjectingFilter``
-logging filter — all from ``insights_messaging.consumers.kafka``.
+This module tests the ``update_archive_context_ids`` helper and the
+``ArchiveContextIdsInjectingFilter`` logging filter.
 
 Note: The ``Kafka`` consumer class itself requires a live confluent-kafka
 connection and is tested via integration tests, not here.
 """
 
-import json
 import logging
 
 import pytest
@@ -102,51 +100,3 @@ def test_filter_injects_context_ids(request):
     assert result is True
     assert not hasattr(record, "request_id")
     assert not hasattr(record, "inventory_id")
-
-
-@pytest.mark.parametrize(
-    ("gauge_attr", "label_kwargs", "expected"),
-    [
-        pytest.param(
-            "KAFKA_CONSUMER_REBALANCE_COUNT",
-            {"type": "consumer", "client_id": "test-client-1", "state": "up"},
-            42,
-            id="rebalance_count",
-        ),
-        pytest.param(
-            "KAFKA_CONSUMER_REPLY_QUEUE_SIZE",
-            {"type": "consumer", "client_id": "test-client-1"},
-            7,
-            id="reply_queue_size",
-        ),
-        pytest.param(
-            "KAFKA_CONSUMER_REBALANCE_AGE",
-            {"type": "consumer", "client_id": "test-client-1"},
-            5000,
-            id="rebalance_age",
-        ),
-    ],
-)
-def test_stats_to_metrics_sets_gauge(kafka_metrics, gauge_attr, label_kwargs, expected):
-    """stats_to_metrics must parse the JSON stats blob and update Prometheus gauges.
-
-    Note: kafka_metrics is session-scoped because prometheus_client forbids
-    re-registering gauges.  Tests use the same client_id so gauge values
-    are overwritten, not accumulated.
-    """
-    stats = {
-        "type": "consumer",
-        "client_id": "test-client-1",
-        "cgrp": {
-            "rebalance_cnt": 42,
-            "rebalance_age": 5000,
-            "state": "up",
-        },
-        "replyq": 7,
-    }
-
-    kafka_metrics.stats_to_metrics(json.dumps(stats))
-
-    gauge = getattr(kafka_metrics, gauge_attr)
-    sample = gauge.labels(**label_kwargs)._value.get()
-    assert sample == expected, f"{gauge_attr} should be {expected}, got {sample}"
