@@ -21,14 +21,6 @@ from insights_messaging.consumers import (
 from insights_messaging.consumers.kafka import update_archive_context_ids
 
 
-@pytest.fixture(autouse=True)
-def _reset_archive_context():
-    """Reset archive_context_var before and after each test."""
-    archive_context_var.set({})
-    yield
-    archive_context_var.set({})
-
-
 def _make_log_record(msg="test"):
     return logging.LogRecord(
         name="test",
@@ -56,10 +48,11 @@ def _make_log_record(msg="test"):
         ),
     ],
 )
-def test_update_context_ids_sets_fields(payload, expected):
+def test_update_context_ids_sets_fields(request, payload, expected):
     """update_archive_context_ids must extract IDs when present, skip when absent."""
     update_archive_context_ids(payload)
     ctx = archive_context_var.get()
+    request.addfinalizer(lambda: archive_context_var.set({}))
     assert ctx == expected
 
 
@@ -70,7 +63,7 @@ def test_update_context_ids_sets_fields(payload, expected):
         pytest.param({"other_key": "value"}, id="missing_structure"),
     ],
 )
-def test_update_context_ids_noop_for_invalid_payload(payload):
+def test_update_context_ids_noop_for_invalid_payload(request, payload):
     """update_archive_context_ids must be a safe no-op for invalid payloads.
 
     The Kafka consumer may receive tombstone messages (None), deserialization
@@ -78,10 +71,11 @@ def test_update_context_ids_noop_for_invalid_payload(payload):
     The function must leave the context unchanged rather than raising.
     """
     update_archive_context_ids(payload)
+    request.addfinalizer(lambda: archive_context_var.set({}))
     assert archive_context_var.get() == {}, f"Context should remain empty for payload {payload!r}"
 
 
-def test_filter_injects_context_ids():
+def test_filter_injects_context_ids(request):
     """ArchiveContextIdsInjectingFilter must copy context IDs onto log records.
 
     When context is populated, the filter sets request_id and inventory_id
@@ -91,6 +85,7 @@ def test_filter_injects_context_ids():
     """
     # --- With context ---
     archive_context_var.set({"request_id": "req-abc", "inventory_id": "inv-def"})
+    request.addfinalizer(lambda: archive_context_var.set({}))
     f = ArchiveContextIdsInjectingFilter()
     record = _make_log_record()
 

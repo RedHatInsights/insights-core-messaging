@@ -10,6 +10,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
+from requests.exceptions import HTTPError
 
 from insights_messaging.downloaders.httpfs import Http
 from insights_messaging.downloaders.s3 import S3Downloader
@@ -70,11 +71,11 @@ def test_http_get_raises_on_http_error():
     dl = Http()
 
     mock_response = MagicMock()
-    mock_response.raise_for_status.side_effect = Exception("404 Not Found")
+    mock_response.raise_for_status.side_effect = HTTPError("404 Not Found")
 
     with (
         patch.object(dl.session, "get", return_value=mock_response),
-        pytest.raises(Exception, match="404"),
+        pytest.raises(HTTPError, match="404"),
     ):
         dl.get("http://example.com/missing.tar.gz").__enter__()
 

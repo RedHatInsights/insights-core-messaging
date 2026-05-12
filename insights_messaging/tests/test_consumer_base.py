@@ -1,13 +1,11 @@
 """
 Tests for the Consumer base class.
 
-The Consumer base class provides the ``process()`` lifecycle method that
-coordinates downloading, broker creation, engine processing, publishing,
-and watcher events.  These tests verify the event dispatch ordering,
+These tests verify the event dispatch ordering,
 error handling, and the Requeue mechanism.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -69,17 +67,15 @@ class RecordingConsumerWatcher(ConsumerWatcher):
         self.events.append("on_consumer_complete")
 
 
-class StubConsumer(Consumer):
-    """Concrete Consumer subclass for testing."""
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
 
-    def __init__(self, publisher, downloader, engine):
-        super().__init__(publisher, downloader, engine)
 
-    def run(self):
-        raise NotImplementedError()
-
-    def get_url(self, input_msg):
-        return EXPECTED_URL
+@pytest.fixture(autouse=True)
+def _patch_get_url():
+    with patch.object(Consumer, "get_url", return_value=EXPECTED_URL):
+        yield
 
 
 # ---------------------------------------------------------------------------
@@ -95,8 +91,7 @@ def test_process_publishes_results():
     passed to publisher.publish() together with the original input message.
     """
     publisher = MagicMock()
-    consumer = StubConsumer(publisher, _make_downloader(), _make_engine())
-
+    consumer = Consumer(publisher, _make_downloader(), _make_engine())
     consumer.process("test_msg")
 
     publisher.publish.assert_called_once_with("test_msg", EXPECTED_RESULTS)
@@ -109,7 +104,7 @@ def test_process_downloads_url():
     incoming message.  This test ensures the downloader receives that URL.
     """
     downloader = _make_downloader()
-    consumer = StubConsumer(MagicMock(), downloader, _make_engine())
+    consumer = Consumer(MagicMock(), downloader, _make_engine())
 
     consumer.process("test_msg")
 
@@ -124,7 +119,7 @@ def test_process_passes_broker_to_engine():
     and the local path to the extracted archive.
     """
     engine = _make_engine()
-    consumer = StubConsumer(MagicMock(), _make_downloader(), engine)
+    consumer = Consumer(MagicMock(), _make_downloader(), engine)
 
     consumer.process("test_msg")
 
@@ -141,7 +136,7 @@ def test_process_passes_broker_to_engine():
 def test_watcher_success_event_order():
     """Watcher events must fire in a deterministic order on the success path."""
     watcher = RecordingConsumerWatcher()
-    consumer = StubConsumer(MagicMock(), _make_downloader(), _make_engine())
+    consumer = Consumer(MagicMock(), _make_downloader(), _make_engine())
     watcher.watch(consumer)
 
     consumer.process("test_msg")
@@ -159,7 +154,7 @@ def test_watcher_failure_event_order():
     """Watcher failure path must fire on_consumer_failure and skip on_consumer_success."""
     watcher = RecordingConsumerWatcher()
     engine = _make_engine(side_effect=RuntimeError("engine error"))
-    consumer = StubConsumer(MagicMock(), _make_downloader(), engine)
+    consumer = Consumer(MagicMock(), _make_downloader(), engine)
     watcher.watch(consumer)
 
     with pytest.raises(RuntimeError, match="engine error"):
@@ -186,7 +181,7 @@ def test_process_calls_publisher_error_on_exception():
     publisher = MagicMock()
     error = RuntimeError("engine failure")
     engine = _make_engine(side_effect=error)
-    consumer = StubConsumer(publisher, _make_downloader(), engine)
+    consumer = Consumer(publisher, _make_downloader(), engine)
 
     with pytest.raises(RuntimeError):
         consumer.process("msg")

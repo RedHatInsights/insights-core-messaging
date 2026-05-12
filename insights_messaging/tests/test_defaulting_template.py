@@ -7,16 +7,33 @@ operators to provide fallback values for optional settings without
 requiring every environment variable to be defined.
 """
 
-import string
-
 import pytest
 
 from insights_messaging.template import DefaultingTemplate as Template
 
 
-def test_extends_string_template():
-    """DefaultingTemplate must extend string.Template to inherit standard substitution."""
-    assert issubclass(Template, string.Template)
+def test_simple_substitution():
+    # no subs
+    assert Template("hello world").substitute() == "hello world"
+
+    # simple subs
+    assert Template("hello $who").substitute(who="world") == "hello world"
+    assert Template("hello $who").substitute({"who": "world"}) == "hello world"
+
+    # braced subs
+    assert Template("hello ${who}").substitute(who="world") == "hello world"
+    assert Template("hello ${who}").substitute({"who": "world"}) == "hello world"
+
+    # escapes
+    assert Template("hello $$who").substitute() == "hello $who"
+    assert Template("hello $${who}").substitute() == "hello ${who}"
+
+    # missing keys
+    with pytest.raises(Exception):
+        Template("hello $who").substitute()
+
+    with pytest.raises(Exception):
+        Template("hello ${who}").substitute()
 
 
 def test_default_substitution():
@@ -35,6 +52,19 @@ def test_default_substitution():
     # defaults not allowed outside of braces
     with pytest.raises(KeyError):
         Template("hello $who:world").substitute()
+
+
+def test_simple_safe_substitution():
+    assert Template("hello world").safe_substitute() == "hello world"
+
+    assert Template("hello $who").safe_substitute(who="world") == "hello world"
+    assert Template("hello $who").safe_substitute({"who": "world"}) == "hello world"
+
+    assert Template("hello ${who}").safe_substitute(who="world") == "hello world"
+    assert Template("hello ${who}").safe_substitute({"who": "world"}) == "hello world"
+
+    assert Template("hello $who").safe_substitute() == "hello $who"
+    assert Template("hello ${who}").safe_substitute() == "hello ${who}"
 
 
 def test_default_safe_substitution():
