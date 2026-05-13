@@ -35,6 +35,11 @@
       "platformAutomerge": true
     },
     {
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["uses-with"],
+      "enabled": false
+    },
+    {
       "matchManagers": ["bundler"],
       "groupName": "Ruby dependencies",
       "groupSlug": "ruby-deps",
