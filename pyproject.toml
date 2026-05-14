@@ -47,7 +47,7 @@ develop = [
     "wheel",
 ]
 
-testing = [
+test = [
     "confluent-kafka",
     "coverage",
     "pytest",

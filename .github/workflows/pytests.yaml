@@ -15,6 +15,7 @@ jobs:
         python-version:
           - "3.11"
           - "3.12"
+          - "3.13"
 
     uses: RedHatInsights/processing-tools/.github/workflows/pytests.yaml@v0.4.4
     secrets:
