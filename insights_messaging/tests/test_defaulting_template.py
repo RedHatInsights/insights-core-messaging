@@ -37,14 +37,7 @@ def test_simple_substitution():
 
 
 def test_default_substitution():
-    """DefaultingTemplate must support ${var:default} syntax for fallback values.
-
-    This is the key extension over string.Template.  When the variable
-    is not provided, the default value (everything after the first colon
-    up to the closing brace) is used.  Colons within the default are
-    preserved.  Defaults are NOT allowed outside braces ($var:default
-    must raise KeyError).
-    """
+    """DefaultingTemplate must support ${var:default} syntax for fallback values."""
     assert Template("hello ${who:world}").substitute() == "hello world"
     assert Template("hello ${who:w:orld}").substitute() == "hello w:orld"
     assert Template("hello ${who:}").substitute() == "hello "

@@ -42,30 +42,6 @@ def _make_engine(result=EXPECTED_RESULTS, side_effect=None):
     return engine
 
 
-class RecordingConsumerWatcher(ConsumerWatcher):
-    """Watcher that records the order of consumer lifecycle events."""
-
-    def __init__(self):
-        self.events = []
-
-    def on_recv(self, input_msg):
-        self.events.append("on_recv")
-
-    def on_download(self, path):
-        self.events.append("on_download")
-
-    def on_process(self, input_msg, results):
-        self.events.append("on_process")
-
-    def on_consumer_success(self, input_msg, broker, results):
-        self.events.append("on_consumer_success")
-
-    def on_consumer_failure(self, input_msg, exception):
-        self.events.append("on_consumer_failure")
-
-    def on_consumer_complete(self, input_msg):
-        self.events.append("on_consumer_complete")
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -111,13 +87,8 @@ def test_process_downloads_url():
     downloader.get.assert_called_once_with(EXPECTED_URL)
 
 
-def test_process_passes_broker_to_engine():
-    """Consumer.process() must create a broker and pass it with the archive path to the engine.
-
-    The broker carries component results and exceptions through the
-    insights-core evaluation pipeline.  The engine needs both the broker
-    and the local path to the extracted archive.
-    """
+def test_process_passes_archive_path_to_engine():
+    """Consumer.process() must pass the downloaded archive path to the engine."""
     engine = _make_engine()
     consumer = Consumer(MagicMock(), _make_downloader(), engine)
 
@@ -135,34 +106,36 @@ def test_process_passes_broker_to_engine():
 
 def test_watcher_success_event_order():
     """Watcher events must fire in a deterministic order on the success path."""
-    watcher = RecordingConsumerWatcher()
+    watcher = MagicMock(spec=ConsumerWatcher)
     consumer = Consumer(MagicMock(), _make_downloader(), _make_engine())
-    watcher.watch(consumer)
+    consumer.add_watcher(watcher)
 
     consumer.process("test_msg")
 
-    assert watcher.events == [
+    method_names = [call[0] for call in watcher.method_calls]
+    assert method_names == [
         "on_recv",
         "on_download",
         "on_process",
         "on_consumer_success",
         "on_consumer_complete",
-    ], f"Unexpected success event order: {watcher.events}"
+    ]
 
 
 def test_watcher_failure_event_order():
     """Watcher failure path must fire on_consumer_failure and skip on_consumer_success."""
-    watcher = RecordingConsumerWatcher()
+    watcher = MagicMock(spec=ConsumerWatcher)
     engine = _make_engine(side_effect=RuntimeError("engine error"))
     consumer = Consumer(MagicMock(), _make_downloader(), engine)
-    watcher.watch(consumer)
+    consumer.add_watcher(watcher)
 
     with pytest.raises(RuntimeError, match="engine error"):
         consumer.process("test_msg")
 
-    assert "on_consumer_failure" in watcher.events
-    assert "on_consumer_success" not in watcher.events
-    assert watcher.events[-1] == "on_consumer_complete"
+    method_names = [call[0] for call in watcher.method_calls]
+    assert "on_consumer_failure" in method_names
+    assert "on_consumer_success" not in method_names
+    assert method_names[-1] == "on_consumer_complete"
 
 
 # ---------------------------------------------------------------------------

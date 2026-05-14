@@ -34,7 +34,7 @@ def test_http_auth_from_env(env_vars, expected_auth):
     password) tuple for Basic auth.  When absent, auth must be None —
     sending credentials to unauthenticated services would be incorrect.
     """
-    with patch.dict(os.environ, env_vars, clear=True):
+    with patch.dict(os.environ, env_vars):
         dl = Http()
         assert dl.session.auth == expected_auth
 
