@@ -50,6 +50,25 @@ def test_stats_to_metrics_sets_gauge(kafka_metrics, gauge_attr, label_kwargs, ex
     assert sample == expected, f"{gauge_attr} should be {expected}, got {sample}"
 
 
+def test_stats_to_metrics_sets_consumer_state(kafka_metrics):
+    """stats_to_metrics must set KAFKA_CONSUMER_STATE info metric."""
+    stats = {
+        "type": "consumer",
+        "client_id": "test-client-1",
+        "cgrp": {
+            "rebalance_cnt": 1,
+            "rebalance_age": 100,
+            "state": "up",
+        },
+        "replyq": 0,
+    }
+
+    kafka_metrics.stats_to_metrics(json.dumps(stats))
+
+    info = kafka_metrics.KAFKA_CONSUMER_STATE.labels(type="consumer", client_id="test-client-1")
+    assert info._value["state"] == "up"
+
+
 def test_rebalance_count_labels_exclude_state(kafka_metrics):
     """KAFKA_CONSUMER_REBALANCE_COUNT must not include 'state' in labelnames."""
     labelnames = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._labelnames

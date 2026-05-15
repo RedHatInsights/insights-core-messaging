@@ -4,7 +4,7 @@ import os
 import signal
 
 from confluent_kafka import Consumer as ConfluentConsumer
-from prometheus_client import Gauge
+from prometheus_client import Gauge, Info
 
 from insights_messaging.consumers import Consumer, RequeueError, archive_context_var
 
@@ -72,9 +72,9 @@ class KafkaMetrics:
         )
 
         # Consumer state — tracked separately with fixed-cardinality labels.
-        self.KAFKA_CONSUMER_STATE = Gauge(
+        self.KAFKA_CONSUMER_STATE = Info(
             "kafka_consumer_state",
-            "Current state of the consumer group (encoded as string info label)",
+            "Current state of the consumer group",
             labelnames=["type", "client_id"],
             **gauge_kwargs,
         )
@@ -109,6 +109,10 @@ class KafkaMetrics:
 
         self.KAFKA_CONSUMER_REBALANCE_AGE.labels(type=stat_type, client_id=client_id).set(
             stats.get("cgrp").get("rebalance_age")
+        )
+
+        self.KAFKA_CONSUMER_STATE.labels(type=stat_type, client_id=client_id).info(
+            {"state": stats.get("cgrp").get("state")}
         )
 
 
