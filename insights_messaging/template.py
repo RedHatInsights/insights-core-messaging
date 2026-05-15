@@ -12,7 +12,7 @@ def _infer_type(v):
     for conv in [int, float]:
         try:
             return conv(v)
-        except:
+        except Exception:
             pass
 
     return v

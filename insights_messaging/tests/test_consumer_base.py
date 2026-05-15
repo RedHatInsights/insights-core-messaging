@@ -2,7 +2,7 @@
 Tests for the Consumer base class.
 
 These tests verify the event dispatch ordering,
-error handling, and the Requeue mechanism.
+error handling, and the RequeueError mechanism.
 """
 
 from unittest.mock import MagicMock, patch

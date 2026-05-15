@@ -1,3 +1,4 @@
+import contextlib
 import logging
 
 import pika
@@ -45,7 +46,5 @@ class RabbitMQ(Requeuer):
 
     @retry
     def requeue(self, msg):
-        try:
+        with contextlib.suppress(pika.exceptions.ConnectionClosedByBroker):
             self.send(msg)
-        except pika.exceptions.ConnectionClosedByBroker:
-            pass

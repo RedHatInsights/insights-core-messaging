@@ -9,8 +9,8 @@ class Http:
     def __init__(self, tmp_dir=None, chunk_size=16 * 1024):
         self.session = requests.Session()
 
-        user = os.environ.get("httpfs_username")
-        password = os.environ.get("httpfs_password")
+        user = os.environ.get("httpfs_username")  # noqa: SIM112
+        password = os.environ.get("httpfs_password")  # noqa: SIM112
 
         if user is not None and password is not None:
             self.session.auth = (user, password)

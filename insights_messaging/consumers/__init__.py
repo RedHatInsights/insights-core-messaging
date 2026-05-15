@@ -6,24 +6,25 @@ from insights import dr
 from insights_messaging.watchers import Watched
 
 log = logging.getLogger(__name__)
-archive_context_var = ContextVar("archive_context_ids", default={})
+archive_context_var = ContextVar("archive_context_ids", default=None)
 
 
 class ArchiveContextIdsInjectingFilter(logging.Filter):
     """
-    A filter which injects context-specific (inventory id, account id, request id) information into logs.
+    A filter which injects context-specific information
+    (inventory id, account id, request id) into logs.
     """
 
     def filter(self, record):
-        ids_dict = archive_context_var.get()
+        ids_dict = archive_context_var.get() or {}
         for k, v in ids_dict.items():
             setattr(record, k, v)
         return True
 
 
-class Requeue(Exception):
+class RequeueError(Exception):
     """
-    An Exception to mesasge a requeue request.
+    An Exception to message a requeue request.
     """
 
 

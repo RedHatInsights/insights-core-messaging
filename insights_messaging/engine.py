@@ -42,7 +42,8 @@ class Engine(Watched):
         total_size = sum(p.stat().st_size for p in Path(i_path).rglob("*"))
         if total_size >= self.unpacked_archive_size_limit:
             log.warning(
-                f"Unpacked archive exceeds extracted file size limit of {self.unpacked_archive_size_limit}"
+                "Unpacked archive exceeds extracted file size limit"
+                f" of {self.unpacked_archive_size_limit}"
             )
             return False
         return True
@@ -75,7 +76,8 @@ class Engine(Watched):
                     return result
                 else:
                     raise Exception(
-                        f"Unpacked archive exceeds the size limit {self.unpacked_archive_size_limit}"
+                        "Unpacked archive exceeds the size limit"
+                        f" {self.unpacked_archive_size_limit}"
                     )
         except Exception as ex:
             self.fire("on_engine_failure", broker, ex)

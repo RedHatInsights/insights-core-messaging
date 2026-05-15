@@ -6,7 +6,7 @@ import signal
 from confluent_kafka import Consumer as ConfluentConsumer
 from prometheus_client import Gauge
 
-from insights_messaging.consumers import Consumer, Requeue, archive_context_var
+from insights_messaging.consumers import Consumer, RequeueError, archive_context_var
 
 log = logging.getLogger(__name__)
 
@@ -145,9 +145,9 @@ class Kafka(Consumer):
                         update_archive_context_ids(payload)
                         self.process(payload)
                         log.info("Completed one payload")
-                except Requeue as req:
+                except RequeueError as req:
                     if not self.requeuer:
-                        raise Exception("Requeue request with no requeuer configured.")
+                        raise Exception("Requeue request with no requeuer configured.") from req
                     self.requeuer.requeue(val, req)
                 except Exception as ex:
                     log.exception(ex)

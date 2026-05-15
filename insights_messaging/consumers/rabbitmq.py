@@ -3,7 +3,7 @@ import logging
 import pika
 from utils import retry
 
-from . import Consumer, Requeue
+from . import Consumer, RequeueError
 
 log = logging.getLogger(__name__)
 
@@ -46,9 +46,9 @@ class RabbitMQ(Consumer):
         try:
             self.process(input_msg)
             ch.basic_ack(delivery_tag=method.delivery_tag)
-        except Requeue:
+        except RequeueError:
             if not self.requeuer:
-                raise Exception("Requeue request with no requeuer configured.")
+                raise Exception("Requeue request with no requeuer configured.") from None
             self.requeuer.requeue(body)
         except Exception as ex:
             log.exception(ex)
