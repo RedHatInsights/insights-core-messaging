@@ -51,17 +51,7 @@ def test_stats_to_metrics_sets_gauge(kafka_metrics, gauge_attr, label_kwargs, ex
 
 
 def test_rebalance_count_labels_exclude_state(kafka_metrics):
-    """Verify that KAFKA_CONSUMER_REBALANCE_COUNT does not include 'state'.
-
-    Previously, labelnames included ['type', 'client_id', 'state'].  Since
-    ``state`` changes over time (e.g. "up", "rebalancing", "init"), each
-    unique label combination created a new child metric object stored
-    permanently in prometheus_client's internal ``_metrics`` dict — never
-    garbage collected.  This caused ~1 MB/hr of memory growth.
-
-    The fix removes 'state' from the labelnames to keep metric cardinality
-    fixed (one child per type+client_id pair).
-    """
+    """KAFKA_CONSUMER_REBALANCE_COUNT must not include 'state' in labelnames."""
     labelnames = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._labelnames
 
     assert "state" not in labelnames, (
@@ -76,12 +66,7 @@ def test_rebalance_count_labels_exclude_state(kafka_metrics):
 
 
 def test_consumer_state_metric_exists(kafka_metrics):
-    """Verify that KAFKA_CONSUMER_STATE gauge exists with correct labels.
-
-    Consumer state was previously embedded in the rebalance count metric
-    as a label, causing cardinality explosion.  It is now tracked
-    separately via KAFKA_CONSUMER_STATE with fixed-cardinality labels.
-    """
+    """KAFKA_CONSUMER_STATE gauge must exist with type and client_id labels."""
     assert hasattr(kafka_metrics, "KAFKA_CONSUMER_STATE"), (
         "KafkaMetrics should have a KAFKA_CONSUMER_STATE gauge for "
         "tracking consumer state separately from rebalance count"
@@ -97,14 +82,7 @@ def test_consumer_state_metric_exists(kafka_metrics):
 
 
 def test_metrics_cardinality_fixed_across_callbacks(kafka_metrics):
-    """Verify that metrics child count stays constant across stats callbacks.
-
-    Without the fix, each ``stats_cb`` invocation with a different ``state``
-    value would create a new child metric object in prometheus_client's
-    internal ``_metrics`` dict.  With the fix, the label set is fixed
-    (type + client_id only), so the child count should remain constant
-    regardless of how many callbacks fire.
-    """
+    """Metrics child count must stay constant regardless of state changes in stats callbacks."""
     # Simulate 50 stats callbacks — in production this fires every 10s
     for i in range(50):
         stats = {

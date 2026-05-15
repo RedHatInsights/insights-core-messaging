@@ -22,18 +22,6 @@ This module tests two separate memory leak fixes in the messaging layer:
    breaking the cycle without losing any debugging information (the
    formatted traceback string is already captured before cleanup).
 
-2. **Kafka metrics label cardinality** — The ``KafkaMetrics`` class
-   previously included a ``state`` label on ``KAFKA_CONSUMER_REBALANCE_COUNT``.
-   Since ``state`` changes over time (e.g. "up", "rebalancing", "init"),
-   each unique label combination created a new child metric object stored
-   permanently in prometheus_client's internal ``_metrics`` dict — never
-   garbage collected.  With ``stats_cb`` firing every 10 seconds, this
-   caused ~1 MB/hr of memory growth.
-
-   The fix removes ``state`` from the rebalance count labelnames and tracks
-   consumer state separately via ``KAFKA_CONSUMER_STATE`` with
-   fixed-cardinality labels (type + client_id only).
-
 These tests cover:
 
 - Exception ``__traceback__`` clearing after ``Consumer.process()``
@@ -41,7 +29,6 @@ These tests cover:
 - Cleanup on both success and failure paths
 - Safe handling when broker is ``None`` (download failure)
 - GC collection of brokers via reference counting alone (CPython)
-- Kafka metrics label cardinality (no ``state`` label leak)
 """
 
 import gc
@@ -49,7 +36,8 @@ import platform
 import traceback
 import weakref
 from collections import defaultdict
-from contextlib import contextmanager, suppress
+from contextlib import suppress
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -64,17 +52,12 @@ EXPECTED_COMPONENT = "test_component"
 
 
 # ---------------------------------------------------------------------------
-# Mock infrastructure for Consumer.process() tests
+# Mock helpers
 # ---------------------------------------------------------------------------
 
 
 class MockBroker:
-    """Minimal broker mock matching the attributes used by Consumer.process().
-
-    Replicates the relevant interface of ``insights.core.dr.Broker``:
-    ``exceptions`` (defaultdict(list)), ``tracebacks`` (dict), and
-    ``instances`` (dict).
-    """
+    """Minimal broker mock with exceptions, tracebacks, and instances dicts."""
 
     def __init__(self):
         self.exceptions = defaultdict(list)
@@ -82,43 +65,23 @@ class MockBroker:
         self.instances = {}
 
     def add_exception(self, component, ex, tb=None):
-        """Store an exception and its formatted traceback string."""
         self.exceptions[component].append(ex)
         self.tracebacks[ex] = tb
 
 
-class MockPublisher:
-    """Publisher that records calls without side effects."""
-
-    def publish(self, input_msg, results):
-        pass
-
-    def error(self, input_msg, ex):
-        pass
-
-
 class MockEngine:
-    """Engine mock that populates the broker with exceptions.
-
-    When ``process()`` is called, it adds a test exception to the broker
-    to simulate what ``dr.run_components()`` does when a component fails.
-    The exception will have a live ``__traceback__`` (created by raising
-    and catching it), mimicking the real circular reference scenario.
-    """
+    """Engine that populates the broker with a caught exception."""
 
     def __init__(self, should_raise=False):
         self.should_raise = should_raise
 
     def process(self, broker, path):
-        # Simulate a component raising during dr.run_components().
-        # The exception gets a real __traceback__ from being raised.
         try:
             raise Exception(EXPECTED_MSG)
         except Exception as ex:
             tb = traceback.format_exc()
             broker.add_exception(EXPECTED_COMPONENT, ex, tb)
 
-        # Also populate instances to simulate real broker state.
         for i in range(10):
             broker.instances[f"component_{i}"] = f"result_{i}"
 
@@ -128,41 +91,27 @@ class MockEngine:
         return "test_results"
 
 
-@contextmanager
-def _mock_download():
-    """Context manager that yields a fake path, simulating downloader.get()."""
-    yield "/tmp/fake_archive"
+def _make_downloader():
+    """Return a MagicMock downloader whose get() yields a fake path."""
+    dl = MagicMock()
+    dl.get.return_value.__enter__ = MagicMock(return_value="/tmp/fake_archive")
+    dl.get.return_value.__exit__ = MagicMock(return_value=False)
+    return dl
 
 
-class MockDownloader:
-    """Downloader that returns a fake path without touching the filesystem."""
-
-    def get(self, url):
-        return _mock_download()
-
-
-class FailingDownloader:
-    """Downloader that raises before the broker is created.
-
-    Used to test the edge case where broker remains None in the finally block.
-    """
-
-    def get(self, url):
-        raise OSError("download failed")
+def _make_failing_downloader():
+    """Return a MagicMock downloader whose get() raises OSError."""
+    dl = MagicMock()
+    dl.get.side_effect = OSError("download failed")
+    return dl
 
 
 class StubConsumer(Consumer):
-    """Concrete Consumer subclass for testing.
-
-    Provides the minimal implementations of abstract methods (``run``,
-    ``get_url``) and exposes the broker created during ``process()`` so
-    tests can inspect it before cleanup.
-    """
+    """Concrete Consumer subclass for testing."""
 
     def __init__(self, publisher, downloader, engine, broker_factory=None):
         super().__init__(publisher, downloader, engine)
         self._broker_factory = broker_factory or MockBroker
-        self._broker_before_cleanup = None
 
     def run(self):
         raise NotImplementedError()
@@ -174,32 +123,13 @@ class StubConsumer(Consumer):
         return self._broker_factory()
 
 
-def _find_exceptions(broker, exc_type=Exception):
-    """Return all exceptions of exc_type from any component in the broker.
-
-    Searches all components to avoid false-pass from a missed key lookup.
-    """
-    found = []
-    for _comp, ex_list in broker.exceptions.items():
-        for ex in ex_list:
-            if isinstance(ex, exc_type):
-                found.append(ex)
-    return found
-
-
 # ---------------------------------------------------------------------------
 # Helper: run process() and capture broker state before cleanup
 # ---------------------------------------------------------------------------
 
 
 def _run_process_capturing_broker(consumer, input_msg="test_msg"):
-    """Run consumer.process() and return the broker.
-
-    The broker's dicts are cleared in the finally block, so we capture
-    the pre-cleanup state by monkey-patching the consumer. The returned
-    broker will have cleared dicts (post-cleanup), but we store
-    pre-cleanup snapshots as attributes for assertions.
-    """
+    """Run consumer.process() and return the broker with pre-cleanup snapshots."""
     broker_ref = {}
     pre_cleanup = {}
 
@@ -212,12 +142,10 @@ def _run_process_capturing_broker(consumer, input_msg="test_msg"):
 
     consumer.create_broker = capturing_create
 
-    # Monkey-patch to capture state before cleanup
     original_process = consumer.engine.process
 
     def capturing_process(broker, path):
         result = original_process(broker, path)
-        # Snapshot broker state before the finally block clears it
         pre_cleanup["exceptions"] = {comp: list(exs) for comp, exs in broker.exceptions.items()}
         pre_cleanup["tracebacks"] = dict(broker.tracebacks)
         pre_cleanup["instances"] = dict(broker.instances)
@@ -240,62 +168,35 @@ def _run_process_capturing_broker(consumer, input_msg="test_msg"):
 
 
 def test_traceback_cleared_after_process():
-    """Verify that __traceback__ is None for all exceptions after process().
-
-    Without the fix, exceptions stored in broker.exceptions retain a
-    __traceback__ reference to the stack frame, creating a circular
-    reference chain that prevents the broker from being garbage collected:
-
-        Broker -> exceptions -> ex -> __traceback__ -> frame -> Broker
-    """
-    consumer = StubConsumer(MockPublisher(), MockDownloader(), MockEngine())
+    """__traceback__ must be None on all stored exceptions after process()."""
+    consumer = StubConsumer(MagicMock(), _make_downloader(), MockEngine())
     broker = _run_process_capturing_broker(consumer)
 
-    assert broker is not None, "Broker should have been created during process()"
+    assert broker is not None
 
-    # Check pre-cleanup state had exceptions with tracebacks
     pre = broker._pre_cleanup
     all_exceptions = []
     for ex_list in pre["exceptions"].values():
         all_exceptions.extend(ex_list)
 
-    assert len(all_exceptions) >= 1, (
-        "Expected at least one exception in broker.exceptions before cleanup, "
-        f"found none. Keys: {list(pre['exceptions'].keys())}"
-    )
+    assert len(all_exceptions) >= 1
 
     for ex in all_exceptions:
-        # The fix: __traceback__ must be cleared to break the circular ref.
-        # This happens even though broker.exceptions is also cleared,
-        # because the exception objects may be referenced elsewhere.
-        assert ex.__traceback__ is None, (
-            "ex.__traceback__ should be None after process() to prevent "
-            "circular reference: Broker -> exceptions -> ex -> "
-            "__traceback__ -> frame -> Broker"
-        )
+        assert ex.__traceback__ is None
 
 
 def test_traceback_string_preserved_before_cleanup():
-    """Verify that formatted traceback strings were captured before cleanup.
-
-    The formatted traceback string is the primary debugging artifact.
-    It must be captured in broker.tracebacks *before* the finally block
-    clears the dicts.  This test verifies no debugging information is
-    lost by the cleanup.
-    """
-    consumer = StubConsumer(MockPublisher(), MockDownloader(), MockEngine())
+    """Formatted traceback strings must be captured before cleanup clears them."""
+    consumer = StubConsumer(MagicMock(), _make_downloader(), MockEngine())
     broker = _run_process_capturing_broker(consumer)
 
-    assert broker is not None, "Broker should have been created during process()"
+    assert broker is not None
 
     pre = broker._pre_cleanup
     for _ex, tb_string in pre["tracebacks"].items():
-        assert tb_string is not None, "Formatted traceback string should be captured before cleanup"
-        assert EXPECTED_MSG in tb_string, (
-            f"Formatted traceback should contain the exception message {EXPECTED_MSG!r}, "
-            f"got: {tb_string[:200]}"
-        )
-        assert "Traceback" in tb_string, "Formatted traceback should contain 'Traceback' header"
+        assert tb_string is not None
+        assert EXPECTED_MSG in tb_string
+        assert "Traceback" in tb_string
 
 
 # ---------------------------------------------------------------------------
@@ -304,37 +205,19 @@ def test_traceback_string_preserved_before_cleanup():
 
 
 def test_broker_dicts_cleared_after_process():
-    """Verify that broker.exceptions, tracebacks, and instances are all
-    cleared after process() completes.
-
-    Without clearing these dicts, the broker retains references to all
-    component results (~500 objects in production) and exception objects,
-    preventing them from being garbage collected even after the message
-    has been fully processed and published.
-    """
-    consumer = StubConsumer(MockPublisher(), MockDownloader(), MockEngine())
+    """broker.exceptions, tracebacks, and instances must be empty after process()."""
+    consumer = StubConsumer(MagicMock(), _make_downloader(), MockEngine())
     broker = _run_process_capturing_broker(consumer)
 
-    assert broker is not None, "Broker should have been created during process()"
+    assert broker is not None
 
-    # Verify pre-cleanup state had data
     pre = broker._pre_cleanup
-    assert len(pre["exceptions"]) > 0, "Pre-cleanup broker should have had exceptions"
-    assert len(pre["instances"]) > 0, "Pre-cleanup broker should have had instances"
+    assert len(pre["exceptions"]) > 0
+    assert len(pre["instances"]) > 0
 
-    # Verify post-cleanup state is empty
-    assert len(broker.exceptions) == 0, (
-        "broker.exceptions should be empty after process() cleanup, "
-        f"found {len(broker.exceptions)} entries"
-    )
-    assert len(broker.tracebacks) == 0, (
-        "broker.tracebacks should be empty after process() cleanup, "
-        f"found {len(broker.tracebacks)} entries"
-    )
-    assert len(broker.instances) == 0, (
-        "broker.instances should be empty after process() cleanup, "
-        f"found {len(broker.instances)} entries"
-    )
+    assert len(broker.exceptions) == 0
+    assert len(broker.tracebacks) == 0
+    assert len(broker.instances) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -343,14 +226,9 @@ def test_broker_dicts_cleared_after_process():
 
 
 def test_cleanup_on_engine_exception():
-    """Verify that broker cleanup still happens when engine.process() raises.
-
-    The cleanup code is in the ``finally`` block, so it must execute
-    regardless of whether processing succeeds or fails.  Without this,
-    failed messages would leak the entire broker.
-    """
+    """Broker cleanup must happen even when engine.process() raises."""
     engine = MockEngine(should_raise=True)
-    consumer = StubConsumer(MockPublisher(), MockDownloader(), engine)
+    consumer = StubConsumer(MagicMock(), _make_downloader(), engine)
 
     broker_ref = {}
     original_create = consumer.create_broker
@@ -366,31 +244,18 @@ def test_cleanup_on_engine_exception():
         consumer.process("test_msg")
 
     broker = broker_ref.get("broker")
-    assert broker is not None, "Broker should have been created before engine failure"
+    assert broker is not None
 
-    # Even after an exception, cleanup must happen
-    assert len(broker.exceptions) == 0, (
-        "broker.exceptions should be cleared even when engine.process() raises"
-    )
-    assert len(broker.tracebacks) == 0, (
-        "broker.tracebacks should be cleared even when engine.process() raises"
-    )
-    assert len(broker.instances) == 0, (
-        "broker.instances should be cleared even when engine.process() raises"
-    )
+    assert len(broker.exceptions) == 0
+    assert len(broker.tracebacks) == 0
+    assert len(broker.instances) == 0
 
 
 def test_no_crash_when_broker_is_none():
-    """Verify that process() handles the case where broker is never created.
+    """process() must not crash in the finally block when broker is None."""
+    consumer = StubConsumer(MagicMock(), _make_failing_downloader(), MockEngine())
 
-    If the download fails before create_broker() is called, broker remains
-    None.  The cleanup code in the finally block must not crash in this case.
-    """
-    consumer = StubConsumer(MockPublisher(), FailingDownloader(), MockEngine())
-
-    # Should not raise — the IOError from download is caught and re-raised,
-    # but the finally block must not add a secondary exception.
-    with pytest.raises(IOError, match="download failed"):
+    with pytest.raises(OSError, match="download failed"):
         consumer.process("test_msg")
 
 
@@ -404,35 +269,18 @@ def test_no_crash_when_broker_is_none():
     reason="Relies on CPython reference-counting semantics",
 )
 def test_broker_collected_after_process():
-    """Verify that brokers are garbage collected after processing.
-
-    Without the fix, circular references from exception.__traceback__ keep
-    brokers alive indefinitely, causing memory to grow over time.
-
-    We disable the cyclic GC during the test so that only reference-counting
-    frees the brokers.  With the fix, clearing __traceback__ and the broker
-    dicts breaks all cycles and reference counting alone is sufficient.
-    Without the fix, the circular reference keeps the broker alive.
-    """
+    """Brokers must be GC-collectible by refcounting alone (no cyclic GC needed)."""
     n_runs = 5
     refs = []
 
-    # Disable cyclic GC so circular references are NOT collected.
-    # This makes the test deterministic: brokers survive IFF there
-    # is a reference cycle.
     gc.collect()
     was_enabled = gc.isenabled()
     gc.disable()
 
     try:
         for _ in range(n_runs):
-            consumer = StubConsumer(MockPublisher(), MockDownloader(), MockEngine())
-            # Call process() directly — don't use the capturing helper
-            # because its closures would hold extra references to the broker.
+            consumer = StubConsumer(MagicMock(), _make_downloader(), MockEngine())
             consumer.process("test_msg")
-            # Access the broker via the consumer's create_broker path.
-            # After process() returns, the broker local is out of scope,
-            # but we need a weakref to it.  Re-create and process to get one.
             broker = MockBroker()
             broker_ref = weakref.ref(broker)
             consumer._broker_factory = lambda b=broker: b
@@ -443,13 +291,9 @@ def test_broker_collected_after_process():
 
         collected = sum(1 for ref in refs if ref() is None)
         assert collected >= n_runs - 1, (
-            f"Only {collected}/{n_runs} brokers were garbage collected "
-            "by reference counting alone (cyclic GC disabled). "
-            "Remaining brokers are held by circular references "
-            "from exception.__traceback__ -> frame -> broker."
+            f"Only {collected}/{n_runs} brokers were collected by refcounting alone"
         )
     finally:
-        # Restore GC state exactly as it was before the test.
         if was_enabled:
             gc.enable()
         gc.collect()
