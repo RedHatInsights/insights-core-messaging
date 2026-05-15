@@ -1,34 +1,8 @@
 """
-Regression tests for memory leak fixes in insights-core-messaging.
+Tests for broker memory leak fixes in Consumer.process().
 
-This module tests two separate memory leak fixes in the messaging layer:
-
-1. **Broker cleanup in Consumer.process()** — When a component raises an
-   exception during ``dr.run()``, Python attaches the live traceback object
-   to ``exception.__traceback__``.  That traceback holds a reference to the
-   stack frame, which references local variables — including the ``broker``.
-   This creates a circular reference chain::
-
-       Broker -> exceptions -> exception -> __traceback__ -> frame -> Broker
-
-   CPython's reference-counting collector cannot break cycles, so the broker
-   and all of its data (the ``instances`` dict with ~500 component results)
-   stays alive until the cyclic GC runs.  In long-running services this
-   manifests as a steady memory leak (~8 MB/hr in production).
-
-   The fix in ``Consumer.process()`` clears ``ex.__traceback__`` on every
-   stored exception and then clears the broker's ``exceptions``,
-   ``tracebacks``, and ``instances`` dicts in the ``finally`` block,
-   breaking the cycle without losing any debugging information (the
-   formatted traceback string is already captured before cleanup).
-
-These tests cover:
-
-- Exception ``__traceback__`` clearing after ``Consumer.process()``
-- Broker dict cleanup (exceptions, tracebacks, instances)
-- Cleanup on both success and failure paths
-- Safe handling when broker is ``None`` (download failure)
-- GC collection of brokers via reference counting alone (CPython)
+Covers traceback clearing, broker dict cleanup, safe handling when
+broker is None, and GC collection via reference counting.
 """
 
 import gc
