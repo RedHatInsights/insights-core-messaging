@@ -65,7 +65,7 @@ class Consumer(Watched):
             raise
         finally:
             self.fire("on_consumer_complete", input_msg)
-            # CCXDEV-15098: Break circular references to prevent memory leak.
+            # Break circular references to prevent memory leak.
             #
             # When a component raises during dr.run(), Python attaches the
             # traceback to the exception via ex.__traceback__. That traceback

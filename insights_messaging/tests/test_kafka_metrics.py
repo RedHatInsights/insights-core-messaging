@@ -12,7 +12,7 @@ import pytest
     [
         pytest.param(
             "KAFKA_CONSUMER_REBALANCE_COUNT",
-            {"type": "consumer", "client_id": "test-client-1", "state": "up"},
+            {"type": "consumer", "client_id": "test-client-1"},
             42,
             id="rebalance_count",
         ),

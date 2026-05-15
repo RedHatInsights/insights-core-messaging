@@ -1,5 +1,5 @@
 """
-Regression tests for CCXDEV-15098: Memory leak fixes in insights-core-messaging.
+Regression tests for memory leak fixes in insights-core-messaging.
 
 This module tests two separate memory leak fixes in the messaging layer:
 
@@ -50,7 +50,7 @@ import platform
 import traceback
 import weakref
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 
 import pytest
 
@@ -226,10 +226,8 @@ def _run_process_capturing_broker(consumer, input_msg="test_msg"):
 
     consumer.engine.process = capturing_process
 
-    try:
+    with suppress(Exception):
         consumer.process(input_msg)
-    except Exception:
-        pass  # Some tests intentionally cause exceptions
 
     broker = broker_ref.get("broker")
     if broker is not None:
@@ -264,7 +262,7 @@ def test_traceback_cleared_after_process():
 
     assert len(all_exceptions) >= 1, (
         "Expected at least one exception in broker.exceptions before cleanup, "
-        "found none. Keys: %s" % list(pre["exceptions"].keys())
+        f"found none. Keys: {list(pre['exceptions'].keys())}"
     )
 
     for ex in all_exceptions:
@@ -292,11 +290,11 @@ def test_traceback_string_preserved_before_cleanup():
     assert broker is not None, "Broker should have been created during process()"
 
     pre = broker._pre_cleanup
-    for ex, tb_string in pre["tracebacks"].items():
+    for _ex, tb_string in pre["tracebacks"].items():
         assert tb_string is not None, "Formatted traceback string should be captured before cleanup"
         assert EXPECTED_MSG in tb_string, (
-            "Formatted traceback should contain the exception message %r, "
-            "got: %s" % (EXPECTED_MSG, tb_string[:200])
+            f"Formatted traceback should contain the exception message {EXPECTED_MSG!r}, "
+            f"got: {tb_string[:200]}"
         )
         assert "Traceback" in tb_string, "Formatted traceback should contain 'Traceback' header"
 
@@ -328,15 +326,15 @@ def test_broker_dicts_cleared_after_process():
     # Verify post-cleanup state is empty
     assert len(broker.exceptions) == 0, (
         "broker.exceptions should be empty after process() cleanup, "
-        "found %d entries" % len(broker.exceptions)
+        f"found {len(broker.exceptions)} entries"
     )
     assert len(broker.tracebacks) == 0, (
         "broker.tracebacks should be empty after process() cleanup, "
-        "found %d entries" % len(broker.tracebacks)
+        f"found {len(broker.tracebacks)} entries"
     )
     assert len(broker.instances) == 0, (
         "broker.instances should be empty after process() cleanup, "
-        "found %d entries" % len(broker.instances)
+        f"found {len(broker.instances)} entries"
     )
 
 
@@ -480,7 +478,7 @@ def test_rebalance_count_labels_exclude_state(kafka_metrics):
     assert "state" not in labelnames, (
         "KAFKA_CONSUMER_REBALANCE_COUNT should not have 'state' in its "
         "labelnames to prevent unbounded metric cardinality growth. "
-        "Found labelnames: %s" % list(labelnames)
+        f"Found labelnames: {list(labelnames)}"
     )
     assert "type" in labelnames, "KAFKA_CONSUMER_REBALANCE_COUNT should have 'type' in labelnames"
     assert "client_id" in labelnames, (

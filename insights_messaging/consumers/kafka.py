@@ -37,7 +37,7 @@ class KafkaMetrics:
     These metrics are populated by the confluent-kafka stats_cb callback,
     which fires every `statistics.interval.ms` (default 10s).
 
-    CCXDEV-15098: The `state` label was intentionally removed from
+    The `state` label was intentionally removed from
     KAFKA_CONSUMER_REBALANCE_COUNT. Previously, labelnames included
     ['type', 'client_id', 'state'], where `state` changed over time
     (e.g. "up", "rebalancing", "init"). Each unique label combination
@@ -103,9 +103,9 @@ class KafkaMetrics:
             stats.get("replyq")
         )
 
-        self.KAFKA_CONSUMER_REBALANCE_COUNT.labels(
-            type=stat_type, client_id=client_id
-        ).set(stats.get("cgrp").get("rebalance_cnt"))
+        self.KAFKA_CONSUMER_REBALANCE_COUNT.labels(type=stat_type, client_id=client_id).set(
+            stats.get("cgrp").get("rebalance_cnt")
+        )
 
         self.KAFKA_CONSUMER_REBALANCE_AGE.labels(type=stat_type, client_id=client_id).set(
             stats.get("cgrp").get("rebalance_age")
