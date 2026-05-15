@@ -23,6 +23,11 @@ class Requeue(Exception):
 
 
 class Consumer(Watched):
+    """
+    The Consumer base class provides the ``process()`` lifecycle method that
+    coordinates downloading, broker creation, engine processing, publishing,
+    and watcher events.
+    """
     def __init__(self, publisher, downloader, engine, requeuer=None):
         super().__init__()
         self.publisher = publisher

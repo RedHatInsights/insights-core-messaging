@@ -2,7 +2,9 @@
 This test module ensures default and custom engines load correctly from
 configuration.
 """
+
 import yaml
+
 from insights_messaging.appbuilder import AppBuilder
 from insights_messaging.engine import Engine
 
@@ -67,7 +69,14 @@ service:
 
 
 def test_configs_engine():
-    """ Should use the specified CustomEngine """
+    """AppBuilder must instantiate the engine class specified in config.
+
+    When the service.engine.name key is present, AppBuilder loads that
+    class instead of the default Engine.  This allows deployments to
+    use custom engines with specialized processing logic (e.g. upload
+    engines, stat-collecting engines).  The engine's kwargs (formatter,
+    timeout, tmp_dir) must also be applied.
+    """
     app = AppBuilder(CONFIG1).build_app()
     assert isinstance(app.engine, CustomEngine)
     assert app.engine.Formatter is MockFormat
@@ -76,7 +85,7 @@ def test_configs_engine():
 
 
 def test_config1_engine():
-    """ Should use the default insights_messaging.engine.Engine """
+    """AppBuilder must use the default Engine when no engine class is specified."""
     app = AppBuilder(CONFIG2).build_app()
     assert isinstance(app.engine, Engine) and not isinstance(app.engine, CustomEngine)
     assert app.engine.Formatter is MockFormat

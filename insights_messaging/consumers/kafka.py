@@ -27,7 +27,16 @@ def update_archive_context_ids(payload):
         archive_context_var.set(payload_id_dict)
 
 class KafkaMetrics():
-    def __init__(self):
+    def __init__(self, registry=None):
+        """Initialize Kafka Prometheus gauges.
+
+        Args:
+            registry: Optional CollectorRegistry passed to each Gauge.
+                When None (default), gauges use the global default registry.
+                Pass a custom registry in tests to avoid cross-test
+                collisions from prometheus_client's duplicate-name restriction.
+        """
+        gauge_kwargs = {"registry": registry} if registry else {}
         self.KAFKA_CONSUMER_REBALANCE_COUNT = Gauge(
             'kafka_consumer_rebalance_count',
             'Number of rebalances for this consumer group',
@@ -35,7 +44,8 @@ class KafkaMetrics():
                 'type',
                 'client_id',
                 'state'
-            ]
+            ],
+            **gauge_kwargs,
         )
 
         self.KAFKA_CONSUMER_REBALANCE_AGE = Gauge(
@@ -44,7 +54,8 @@ class KafkaMetrics():
             labelnames=[
                 'type',
                 'client_id'
-            ]
+            ],
+            **gauge_kwargs,
         )
 
         self.KAFKA_CONSUMER_REPLY_QUEUE_SIZE = Gauge(
@@ -53,7 +64,8 @@ class KafkaMetrics():
             labelnames=[
                 'type',
                 'client_id'
-            ]
+            ],
+            **gauge_kwargs,
         )
 
     def stats_to_metrics(self, stats_json: str) -> None:

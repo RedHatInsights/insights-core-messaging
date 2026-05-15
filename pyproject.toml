@@ -47,7 +47,7 @@ develop = [
     "wheel",
 ]
 
-testing = [
+test = [
     "confluent-kafka",
     "coverage",
     "pytest",
@@ -70,3 +70,6 @@ rabbitmq = [
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+select = ["UP", "F632", "E", "W", "F", "I", "N", "B", "C4", "SIM"]

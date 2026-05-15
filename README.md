@@ -7,6 +7,65 @@ Projects Using This Library
 - [insights-ccx-messaging](https://github.com/RedHatInsights/insights-ccx-messaging) — Provides consumers, publishers, downloaders, and engines for processing OpenShift Insights archives from Kafka.
 - [insights-engine](https://github.com/RedHatInsights/insights-engine) — Processes RHEL Advisor archives from Kafka and produces rule results to a Kafka topic.
 
+Testing
+-------
+
+### Test Framework
+
+The project uses [pytest](https://docs.pytest.org/) as its test
+framework.  Tests are located in `insights_messaging/tests/` and
+follow standard pytest discovery conventions (files named
+`test_*.py`, functions named `test_*`).
+
+### Running Tests
+
+The project uses [tox](https://tox.wiki/) to run tests across
+supported Python versions.  Install tox and run all environments:
+```bash
+pip install tox
+tox -vv
+```
+
+Run a single Python version:
+```bash
+tox -e py311
+```
+
+Run pytest directly (useful during development):
+```bash
+pip install -e .[testing]
+pytest -v --cov=insights_messaging --cov-branch --cov-report=term-missing
+```
+
+### Linting
+
+The project uses [ruff](https://docs.astral.sh/ruff/) for linting and
+formatting via [pre-commit](https://pre-commit.com/).  Install the hooks
+locally:
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+### Writing Tests
+
+Follow these conventions when adding new tests:
+
+1. **File naming**: `test_<module_or_feature>.py`
+2. **Function naming**: `test_<what_is_being_tested>`
+3. **Assertion messages**: Include descriptive messages in assertions to
+   make failures self-explanatory:
+   ```python
+   assert len(broker.exceptions) == 0, (
+       "broker.exceptions should be empty after process() cleanup, "
+       "found %d entries" % len(broker.exceptions)
+   )
+   ```
+4. **Mock objects**: Embed mock classes directly in the test file rather
+   than using a shared fixtures module.  This keeps tests self-contained
+   and easy to understand.
+
 Engine
 ------
 An engine encapsulates the process of evaluating an archive with insights. It
