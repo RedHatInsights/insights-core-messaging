@@ -2,7 +2,7 @@
 Tests for the Consumer base class.
 
 These tests verify the event dispatch ordering,
-error handling, and the Requeue mechanism.
+error handling, and the RequeueError mechanism.
 """
 
 from unittest.mock import MagicMock, patch
@@ -40,7 +40,6 @@ def _make_engine(result=EXPECTED_RESULTS, side_effect=None):
     if side_effect:
         engine.process.side_effect = side_effect
     return engine
-
 
 
 # ---------------------------------------------------------------------------

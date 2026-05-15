@@ -29,10 +29,10 @@ def test_simple_substitution():
     assert Template("hello $${who}").substitute() == "hello ${who}"
 
     # missing keys
-    with pytest.raises(Exception):
+    with pytest.raises(KeyError):
         Template("hello $who").substitute()
 
-    with pytest.raises(Exception):
+    with pytest.raises(KeyError):
         Template("hello ${who}").substitute()
 
 

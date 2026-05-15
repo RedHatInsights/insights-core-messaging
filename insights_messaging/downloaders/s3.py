@@ -1,5 +1,4 @@
 import shutil
-
 from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
 
@@ -14,8 +13,7 @@ class S3Downloader:
 
     @contextmanager
     def get(self, src):
-        with self.fs.open(src) as s:
-            with NamedTemporaryFile(dir=self.tmp_dir) as d:
-                shutil.copyfileobj(s, d, length=self.chunk_size)
-                d.flush()
-                yield d.name
+        with self.fs.open(src) as s, NamedTemporaryFile(dir=self.tmp_dir) as d:
+            shutil.copyfileobj(s, d, length=self.chunk_size)
+            d.flush()
+            yield d.name
