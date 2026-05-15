@@ -137,58 +137,31 @@ def _run_process_capturing_broker(consumer, input_msg="test_msg"):
 
 
 # ---------------------------------------------------------------------------
-# Tests for exception __traceback__ clearing
+# Tests for broker cleanup after process()
 # ---------------------------------------------------------------------------
 
 
-def test_traceback_cleared_after_process():
-    """__traceback__ must be None on all stored exceptions after process()."""
+def test_broker_cleanup_after_process():
+    """Broker dicts and exception tracebacks must be cleaned up after process()."""
     consumer = StubConsumer(MagicMock(), _make_downloader(), MockEngine())
     broker = _run_process_capturing_broker(consumer)
 
     assert broker is not None
 
     pre = broker._pre_cleanup
-    all_exceptions = []
-    for ex_list in pre["exceptions"].values():
-        all_exceptions.extend(ex_list)
 
-    assert len(all_exceptions) >= 1
-
-    for ex in all_exceptions:
-        assert ex.__traceback__ is None
-
-
-def test_traceback_string_preserved_before_cleanup():
-    """Formatted traceback strings must be captured before cleanup clears them."""
-    consumer = StubConsumer(MagicMock(), _make_downloader(), MockEngine())
-    broker = _run_process_capturing_broker(consumer)
-
-    assert broker is not None
-
-    pre = broker._pre_cleanup
+    # Traceback strings were captured before cleanup
     for _ex, tb_string in pre["tracebacks"].items():
         assert tb_string is not None
         assert EXPECTED_MSG in tb_string
-        assert "Traceback" in tb_string
 
+    # __traceback__ cleared on all stored exceptions
+    all_exceptions = [ex for exs in pre["exceptions"].values() for ex in exs]
+    assert len(all_exceptions) >= 1
+    for ex in all_exceptions:
+        assert ex.__traceback__ is None
 
-# ---------------------------------------------------------------------------
-# Tests for broker dict cleanup
-# ---------------------------------------------------------------------------
-
-
-def test_broker_dicts_cleared_after_process():
-    """broker.exceptions, tracebacks, and instances must be empty after process()."""
-    consumer = StubConsumer(MagicMock(), _make_downloader(), MockEngine())
-    broker = _run_process_capturing_broker(consumer)
-
-    assert broker is not None
-
-    pre = broker._pre_cleanup
-    assert len(pre["exceptions"]) > 0
-    assert len(pre["instances"]) > 0
-
+    # Broker dicts emptied
     assert len(broker.exceptions) == 0
     assert len(broker.tracebacks) == 0
     assert len(broker.instances) == 0

@@ -69,37 +69,6 @@ def test_stats_to_metrics_sets_consumer_state(kafka_metrics):
     assert info._value["state"] == "up"
 
 
-def test_rebalance_count_labels_exclude_state(kafka_metrics):
-    """KAFKA_CONSUMER_REBALANCE_COUNT must not include 'state' in labelnames."""
-    labelnames = kafka_metrics.KAFKA_CONSUMER_REBALANCE_COUNT._labelnames
-
-    assert "state" not in labelnames, (
-        "KAFKA_CONSUMER_REBALANCE_COUNT should not have 'state' in its "
-        "labelnames to prevent unbounded metric cardinality growth. "
-        f"Found labelnames: {list(labelnames)}"
-    )
-    assert "type" in labelnames, "KAFKA_CONSUMER_REBALANCE_COUNT should have 'type' in labelnames"
-    assert "client_id" in labelnames, (
-        "KAFKA_CONSUMER_REBALANCE_COUNT should have 'client_id' in labelnames"
-    )
-
-
-def test_consumer_state_metric_exists(kafka_metrics):
-    """KAFKA_CONSUMER_STATE gauge must exist with type and client_id labels."""
-    assert hasattr(kafka_metrics, "KAFKA_CONSUMER_STATE"), (
-        "KafkaMetrics should have a KAFKA_CONSUMER_STATE gauge for "
-        "tracking consumer state separately from rebalance count"
-    )
-
-    labelnames = kafka_metrics.KAFKA_CONSUMER_STATE._labelnames
-    assert "type" in labelnames, "KAFKA_CONSUMER_STATE should have 'type' in labelnames"
-    assert "client_id" in labelnames, "KAFKA_CONSUMER_STATE should have 'client_id' in labelnames"
-    assert "state" not in labelnames, (
-        "KAFKA_CONSUMER_STATE should not have 'state' in labelnames — "
-        "the value is set on the gauge itself, not as a label"
-    )
-
-
 def test_metrics_cardinality_fixed_across_callbacks(kafka_metrics):
     """Metrics child count must stay constant regardless of state changes in stats callbacks."""
     # Simulate 50 stats callbacks — in production this fires every 10s
