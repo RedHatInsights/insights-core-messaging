@@ -53,9 +53,9 @@ from the current _develop_ branch of the upstream project.
 2. Make a branch on the fork.  Use a branch name that would be
    meaningful as it will be part of a default commit message when the
    topic branch is merged into the upstream project
-   
+
     git checkout -b your-topic
-   
+
 3. Make contributions on the topic branch.  This project uses the
    [DCO](https://developercertificate.org/) to manage contributions. Commits
    must be signed by you in order to be accepted. To sign a commit simply add

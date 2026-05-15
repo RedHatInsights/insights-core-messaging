@@ -45,9 +45,7 @@ class DefaultingTemplate(Template):
 
     def substitute(*args, **kws):
         if not args:
-            raise TypeError(
-                "descriptor 'substitute' of 'Template' object " "needs an argument"
-            )
+            raise TypeError("descriptor 'substitute' of 'Template' object needs an argument")
         self, *args = args  # allow the "self" keyword be passed
         if len(args) > 1:
             raise TypeError("Too many positional arguments")
@@ -74,9 +72,7 @@ class DefaultingTemplate(Template):
 
     def safe_substitute(*args, **kws):
         if not args:
-            raise TypeError(
-                "descriptor 'safe_substitute' of 'Template' object " "needs an argument"
-            )
+            raise TypeError("descriptor 'safe_substitute' of 'Template' object needs an argument")
         self, *args = args  # allow the "self" keyword be passed
         if len(args) > 1:
             raise TypeError("Too many positional arguments")

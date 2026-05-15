@@ -1,7 +1,8 @@
 import os
-import requests
 from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
+
+import requests
 
 
 class Http:

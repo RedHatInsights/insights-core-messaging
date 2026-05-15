@@ -1,8 +1,9 @@
 import logging
+
 import pika
+from utils import retry
 
 from . import Consumer, Requeue
-from utils import retry
 
 log = logging.getLogger(__name__)
 

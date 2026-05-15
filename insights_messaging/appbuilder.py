@@ -1,14 +1,14 @@
 import logging
 import logging.config
-from logstash_formatter import LogstashFormatterV1
 import os
 import sys
+
 import yaml
-
 from insights import apply_configs, apply_default_enabled, dr
+from logstash_formatter import LogstashFormatterV1
 
-from .consumers.cli import Interactive
 from .consumers import ArchiveContextIdsInjectingFilter
+from .consumers.cli import Interactive
 from .downloaders.localfs import LocalFS
 from .engine import Engine
 from .publishers.cli import StdOut

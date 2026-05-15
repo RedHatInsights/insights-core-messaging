@@ -1,20 +1,25 @@
-from contextvars import ContextVar
 import logging
+from contextvars import ContextVar
+
 from insights import dr
+
 from insights_messaging.watchers import Watched
 
 log = logging.getLogger(__name__)
-archive_context_var = ContextVar('archive_context_ids', default={})
+archive_context_var = ContextVar("archive_context_ids", default={})
+
 
 class ArchiveContextIdsInjectingFilter(logging.Filter):
     """
     A filter which injects context-specific (inventory id, account id, request id) information into logs.
     """
+
     def filter(self, record):
         ids_dict = archive_context_var.get()
         for k, v in ids_dict.items():
             setattr(record, k, v)
         return True
+
 
 class Requeue(Exception):
     """
@@ -28,6 +33,7 @@ class Consumer(Watched):
     coordinates downloading, broker creation, engine processing, publishing,
     and watcher events.
     """
+
     def __init__(self, publisher, downloader, engine, requeuer=None):
         super().__init__()
         self.publisher = publisher
