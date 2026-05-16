@@ -1,3 +1,5 @@
+# This workflow is synced from RedHatInsights/processing-tools automatically; do not edit in downstream repos.
+
 name: Python unit tests
 
 on:
@@ -15,7 +17,6 @@ jobs:
         python-version:
           - "3.11"
           - "3.12"
-          - "3.13"
 
     uses: RedHatInsights/processing-tools/.github/workflows/pytests.yaml@v0.4.4
     secrets:
