@@ -46,6 +46,21 @@
       "separateMajorMinor": false,
       "automerge": true,
       "platformAutomerge": true
+    },
+    {
+      "matchManagers": ["npm"],
+      "rangeStrategy": "bump"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm minor and patch dependencies",
+      "enabled": true
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ]
 }
