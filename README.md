@@ -330,6 +330,19 @@ service:
                 level: WARN
 ```
 
+Releasing
+---------
+The package version is derived automatically from git tags
+(`dynamic = ["version"]` in `pyproject.toml`), so no manual version
+bump is needed.
+
+1. Ensure all changes are merged to `master`.
+2. Create and push a new tag:
+   ```bash
+   git tag <version>
+   git push origin <version>
+   ```
+
 Default Engine Config
 ---------------------
 ```yaml
