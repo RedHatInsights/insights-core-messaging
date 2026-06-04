@@ -18,27 +18,27 @@ If you wish to contribute to the insights-core-messaging project you'll
 need to create a fork in github.  Then
 
 1. Clone your fork::
-
+    ```bash
     git clone git@github.com:your-user/insights-core-messaging.git
     cd insights-core-messaging
-
+    ```
 2. Reference the original project as "upstream"::
-
+    ```bash
     git remote add upstream git@github.com:RedHatInsights/insights-core-messaging.git
-
+    ```
 3. Synchronize your fork with the upstream project using the following
    commands::
-
+    ```bash
     git pull upstream master
     git push origin master
-
+    ```
 4. To setup a virtual environment and install dependencies
-
-    pytho3 -m venv .
+    ```bash
+    python3 -m venv .
     source bin/activate
     pip install --upgrade pip
     pip install -e .[develop]
-
+    ```
 ## Contributor Submissions
 
 Contributors should submit changes to the code via github "Pull
@@ -46,39 +46,39 @@ Requests."  One would normally start a new contribution with a branch
 from the current _develop_ branch of the upstream project.
 
 1. Synchronize your fork of the _develop_ branch:
-
+    ```bash
     git pull upstream develop
     git push origin develop
-
+    ```
 2. Make a branch on the fork.  Use a branch name that would be
    meaningful as it will be part of a default commit message when the
    topic branch is merged into the upstream project
-
+    ```bash
     git checkout -b your-topic
-
+    ```
 3. Make contributions on the topic branch.  This project uses the
    [DCO](https://developercertificate.org/) to manage contributions. Commits
    must be signed by you in order to be accepted. To sign a commit simply add
    `-s` to the commit command.
-
+    ```bash
     git commit -s
-
+    ```
    Push commits to your fork (creating a remote topic branch on your fork)
-
+    ```bash
     git push
-
+    ```
 4. If you need to make updates after pushing, it is useful to rebase
    with develop.  This will change history, so you will need to force the
    push (this is fine on a topic branch when other developers are not
    working from the remote branch.)
-
+    ```bash
     git checkout develop
     git pull --rebase upstream develop
     git push
     git checkout your-topic
     git rebase develop
     git push --force
-
+    ```
 5. Generally, keep the number of commits on the topic branch small.
    Usually a single commit, perhaps a few in some cases.  Use the
    `amend` and `rebase -i` git commands to manage the commit history
