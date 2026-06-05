@@ -55,7 +55,9 @@
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "npm minor and patch dependencies",
-      "enabled": true
+      "enabled": true,
+      "automerge": true,
+      "platformAutomerge": true
     },
     {
       "matchManagers": ["npm"],
