@@ -21,13 +21,14 @@ classifiers = [
 
 requires-python = ">= 3.11"
 dependencies = [
-    "attrs",
-    "insights-core @ git+https://github.com/RedHatInsights/insights-core.git@master",
-    "app-common-python",
+    "confluent-kafka",
+    "insights-core",
+    "logstash_formatter",
+    "pika",
+    "prometheus_client",
+    "pyyaml",
     "requests",
     "s3fs",
-    "logstash_formatter",
-    "prometheus_client",
 ]
 
 license = "Apache-2.0"
@@ -48,7 +49,6 @@ develop = [
 ]
 
 test = [
-    "confluent-kafka",
     "coverage",
     "pytest",
     "pytest-cov",
