@@ -48,6 +48,14 @@
       "platformAutomerge": true
     },
     {
+      "matchManagers": ["docker"],
+      "groupName": "Docker dependencies",
+      "groupSlug": "docker-deps",
+      "separateMajorMinor": false,
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
       "matchManagers": ["npm"],
       "rangeStrategy": "bump"
     },
