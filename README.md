@@ -2,6 +2,16 @@ Construct an insights archive processing application by providing a
 configuration file that specifies its components. The building blocks
 are described below. Pypi location: https://pypi.org/project/insights-core-messaging
 
+Distributions
+-------------
+The library is published as multiple packages that can be installed
+independently. See [packages/README.md](packages/README.md) for details.
+
+**Note:** The test suite validates the source code, not the distribution
+packages themselves. The correctness of the packaging (file inclusion,
+dependency declarations, etc.) is not covered by automated tests. Use
+the published distributions at your own risk.
+
 Projects Using This Library
 ---------------------------
 - [insights-ccx-messaging](https://github.com/RedHatInsights/insights-ccx-messaging) — Provides consumers, publishers, downloaders, and engines for processing OpenShift Insights archives from Kafka.
@@ -20,11 +30,12 @@ follow standard pytest discovery conventions (files named
 
 ### Running Tests
 
-The project uses [tox](https://tox.wiki/) to run tests across
-supported Python versions.  Install tox and run all environments:
+The project uses [tox](https://tox.wiki/) with [tox-uv](https://github.com/tox-dev/tox-uv)
+to run tests across supported Python versions.  Install tox and run all
+environments:
 ```bash
-pip install tox
-tox -vv
+uv tool install tox --with tox-uv
+tox
 ```
 
 Run a single Python version:
@@ -34,8 +45,8 @@ tox -e py311
 
 Run pytest directly (useful during development):
 ```bash
-pip install -e .[testing]
-pytest -v --cov=insights_messaging --cov-branch --cov-report=term-missing
+uv sync --all-packages --extra test
+uv run pytest -v --cov=insights_messaging --cov-branch --cov-report=term-missing
 ```
 
 ### Linting
