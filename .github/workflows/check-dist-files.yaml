@@ -1,0 +1,23 @@
+name: Check distribution files
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check-dist-files:
+    runs-on: ubuntu-latest
+    name: Check distribution files
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check all source files are in exactly one distribution
+        run: python scripts/check_dist_files.py

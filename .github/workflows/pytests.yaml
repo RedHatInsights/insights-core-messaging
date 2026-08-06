@@ -1,5 +1,3 @@
-# This workflow is synced from RedHatInsights/processing-tools automatically; do not edit in downstream repos.
-
 name: Python unit tests
 
 on:
@@ -17,10 +15,34 @@ jobs:
         python-version:
           - "3.11"
           - "3.12"
+          - "3.13"
+          - "3.14"
 
-    uses: RedHatInsights/processing-tools/.github/workflows/pytests.yaml@v0.4.4
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    with:
-      python_version: ${{ matrix.python-version }}
-      cov_branch: true
+    runs-on: ubuntu-latest
+    name: Python tests
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install workspace packages
+        run: uv sync --all-packages --extra test
+
+      - name: Unit tests with coverage
+        run: uv run pytest -v --cov=insights_messaging --cov-branch --cov-report=xml:coverage.xml --cov-report=term-missing
+
+      - name: Push coverage report to Codecov
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: unit-tests
+          files: coverage.xml
+          fail_ci_if_error: false

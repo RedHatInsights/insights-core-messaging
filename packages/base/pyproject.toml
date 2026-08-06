@@ -1,0 +1,78 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "insights-core-messaging-base"
+dynamic = ["version"]
+readme = {file = "../../README.md", content-type = "text/markdown"}
+maintainers = [
+    {name="CCX Processing Team", email="ccx-core-processing-team@redhat.com"}
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14"
+]
+
+requires-python = ">= 3.11"
+dependencies = [
+    "insights-core",
+    "logstash_formatter",
+    "pyyaml",
+]
+
+license = "Apache-2.0"
+
+[project.urls]
+Homepage = "https://github.com/RedHatInsights/insights-core-messaging"
+
+[project.optional-dependencies]
+develop = [
+    "ipython",
+    "pytest",
+    "setuptools",
+    "twine",
+    "wheel",
+]
+
+test = [
+    "coverage",
+    "pytest",
+    "pytest-cov",
+]
+
+linting = [
+    "ruff",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+root = "../.."
+
+[tool.hatch.build.targets.wheel]
+only-include = ["_"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"../../insights_messaging/__init__.py" = "insights_messaging/__init__.py"
+"../../insights_messaging/__main__.py" = "insights_messaging/__main__.py"
+"../../insights_messaging/appbuilder.py" = "insights_messaging/appbuilder.py"
+"../../insights_messaging/engine.py" = "insights_messaging/engine.py"
+"../../insights_messaging/template.py" = "insights_messaging/template.py"
+"../../insights_messaging/consumers/__init__.py" = "insights_messaging/consumers/__init__.py"
+"../../insights_messaging/consumers/cli.py" = "insights_messaging/consumers/cli.py"
+"../../insights_messaging/downloaders/__init__.py" = "insights_messaging/downloaders/__init__.py"
+"../../insights_messaging/downloaders/localfs.py" = "insights_messaging/downloaders/localfs.py"
+"../../insights_messaging/formats" = "insights_messaging/formats"
+"../../insights_messaging/publishers/__init__.py" = "insights_messaging/publishers/__init__.py"
+"../../insights_messaging/publishers/cli.py" = "insights_messaging/publishers/cli.py"
+"../../insights_messaging/requeuers/__init__.py" = "insights_messaging/requeuers/__init__.py"
+"../../insights_messaging/utils/__init__.py" = "insights_messaging/utils/__init__.py"
+"../../insights_messaging/watchers" = "insights_messaging/watchers"
