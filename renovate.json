@@ -48,7 +48,7 @@
       "platformAutomerge": true
     },
     {
-      "matchManagers": ["docker"],
+      "matchManagers": ["dockerfile"],
       "groupName": "Docker dependencies",
       "groupSlug": "docker-deps",
       "separateMajorMinor": false,
