@@ -31,6 +31,13 @@
       "automerge": true
     },
     {
+      "description": "Major bumps of indirect Go deps rewrite the module path (e.g. yaml/v3 -> yaml/v4), dropping a module that other deps still require. Must stay after the indirect rule above.",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
       "groupSlug": "github-actions",
